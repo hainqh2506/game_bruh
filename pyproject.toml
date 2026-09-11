@@ -1,0 +1,10 @@
+[project]
+name = "doan-chu"
+version = "0.1.0"
+description = "Đoán Chữ Unlimited — unlimited Vietnamese 2-word Wordle-like, local + Quick Tunnel"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "jsbeautifier>=2.0.3",
+]

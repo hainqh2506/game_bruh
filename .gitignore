@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Generated site (make build / make dev)
+public/
+play/index.html
+play/phrases.js
+
+# SQLite WAL
+data/words.sqlite-*
+
+# Runtime tunnel/server
+run/
+
+# Optional nested clones (not needed; kho từ đã nằm trong data/words.sqlite)
+vendor/
+
+# Node
+node_modules/
+.wrangler/
+.dev.vars
+
+# Cache
+_cache/
