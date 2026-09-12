@@ -424,13 +424,23 @@ class RoomHub:
                 if name:
                     player.name = _clean_name(name)
                 return self._auth_payload(room, player)
+            clean_n = _clean_name(name)
+            # Reconnect matching disconnected player if user lost token
+            if clean_n and clean_n != "Khách":
+                for p in room.players.values():
+                    if p.disconnected and p.name.strip().lower() == clean_n.strip().lower():
+                        p.disconnected = False
+                        p.last_seen = _now()
+                        room.touch()
+                        return self._auth_payload(room, p)
+
             if room.status != "lobby":
                 raise ValueError("Ván đang chạy. Chỉ vào lại được từ máy đã chơi.")
             if len(room.players) >= room.max_players:
                 raise ValueError(f"Phòng đầy ({room.max_players} người)")
             if self.party_count() >= self.limits.max_party:
                 raise ValueError(f"Máy chủ đông ({self.limits.max_party} người phòng). Thử lại sau.")
-            player = Player(id=_new_id(), name=_clean_name(name), token=secrets.token_urlsafe(16))
+            player = Player(id=_new_id(), name=clean_n or "Khách", token=secrets.token_urlsafe(16))
             room.players[player.id] = player
             room.touch()
             return self._auth_payload(room, player)

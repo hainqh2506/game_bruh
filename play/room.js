@@ -38,11 +38,14 @@
   let pingTimer = null;
   let reconnectTimer = null;
   const guessWaiters = [];
+  const initialName = sessionStorage.getItem(STORE.name) || (() => {
+    try { return localStorage.getItem(STORE.name) || ""; } catch (e) { return ""; }
+  })();
   const state = {
     room_id: queryRoom,
     token: "",
     player_id: "",
-    name: sessionStorage.getItem(STORE.name) || "",
+    name: initialName,
     status: queryRoom ? "lobby" : "idle",
     host_id: "",
     players: [],
@@ -130,12 +133,26 @@
   }
 
   function saveAuth(data) {
-    if (data.room_id) sessionStorage.setItem(STORE.room, data.room_id);
-    if (data.token) sessionStorage.setItem(STORE.token, data.token);
-    if (data.player_id) sessionStorage.setItem(STORE.player, data.player_id);
+    if (data.room_id) {
+      sessionStorage.setItem(STORE.room, data.room_id);
+      try { localStorage.setItem(STORE.room, data.room_id); } catch (e) {}
+    }
+    if (data.token) {
+      sessionStorage.setItem(STORE.token, data.token);
+      if (data.room_id) {
+        try { localStorage.setItem("doanchu:token:" + data.room_id, data.token); } catch (e) {}
+      }
+    }
+    if (data.player_id) {
+      sessionStorage.setItem(STORE.player, data.player_id);
+      if (data.room_id) {
+        try { localStorage.setItem("doanchu:player:" + data.room_id, data.player_id); } catch (e) {}
+      }
+    }
     if (data.name) {
       state.name = data.name;
       sessionStorage.setItem(STORE.name, data.name);
+      try { localStorage.setItem(STORE.name, data.name); } catch (e) {}
     }
     state.room_id = data.room_id || state.room_id;
     state.token = data.token || state.token;
@@ -147,13 +164,22 @@
   }
 
   function storedRoom() {
-    return normalizeRoomCode(sessionStorage.getItem(STORE.room) || "");
+    return normalizeRoomCode(sessionStorage.getItem(STORE.room) || (() => {
+      try { return localStorage.getItem(STORE.room) || ""; } catch (e) { return ""; }
+    })());
   }
 
   function tokenFor(roomId) {
     const room = normalizeRoomCode(roomId);
-    if (!room || storedRoom() !== room) return "";
-    return storedToken();
+    if (!room) return "";
+    if (storedRoom() === room && sessionStorage.getItem(STORE.token)) {
+      return sessionStorage.getItem(STORE.token);
+    }
+    try {
+      return localStorage.getItem("doanchu:token:" + room) || sessionStorage.getItem(STORE.token) || "";
+    } catch (e) {
+      return sessionStorage.getItem(STORE.token) || "";
+    }
   }
 
   async function api(path, body) {
@@ -411,7 +437,7 @@
   }
 
   function syncPlayfield() {
-    const inGame = state.status === "playing" || state.status === "finished";
+    const inGame = state.status === "playing" || state.status === "round_summary" || state.status === "finished";
     document.body.classList.toggle("solo-play", !partyMode);
     document.body.classList.toggle("party-lobby", partyMode && !inGame);
     document.body.classList.toggle("party-play", partyMode && inGame);

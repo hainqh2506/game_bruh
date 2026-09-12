@@ -404,3 +404,21 @@ def test_sweep_stale_round_time_limit() -> None:
     assert room.status == "round_summary"
     assert all(p.attempts == 6 for p in room.players.values())
 
+
+def test_reconnect_disconnected_player_without_token() -> None:
+    hub = RoomHub()
+    a = hub.create("Host", {"rounds": 2})
+    b = hub.join(a["room_id"], "Guest1")
+    room, host = hub.player_for(a["room_id"], a["token"])
+    room.start(host)
+
+    # Guest1 disconnects
+    hub.mark_disconnected(a["room_id"], b["token"])
+    assert room.players[b["player_id"]].disconnected is True
+
+    # Guest1 re-opens tab in new incognito window (token lost)
+    rejoin = hub.join(a["room_id"], "Guest1", token="")
+    assert rejoin["player_id"] == b["player_id"]
+    assert room.players[b["player_id"]].disconnected is False
+
+
