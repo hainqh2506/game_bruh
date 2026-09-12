@@ -155,7 +155,7 @@ Thêm file JS/CSS: ghi vào `PLAY_SCRIPTS` / `PLAY_STYLES` trong `server/build.p
 ## Python CLI
 
 ```bash
-uv run python main.py --serve --port 18765
+uv run python main.py --serve --port 18765 --host 0.0.0.0
 uv run python main.py --tunnel
 uv run python main.py --stop
 uv run python main.py --build-play
@@ -165,7 +165,22 @@ uv run python main.py --fetch-client    # maintainer: tải lại snapshot doanc
 
 Không tham số → in help. Không tự scrape site gốc.
 
-## Deploy Cloudflare Pages (tuỳ chọn)
+## Deploy Render (Hỗ trợ cả Chơi đơn & Phòng Party WebSocket)
+
+Dùng **Render Web Service** (gói Free) để host game cho bạn bè chơi:
+
+1. Đăng nhập [Render Dashboard](https://dashboard.render.com/) ➔ **New +** ➔ **Web Service** ➔ kết nối repo GitHub này.
+2. Cấu hình dịch vụ:
+   - **Region**: Singapore (Southeast Asia)
+   - **Branch**: `main`
+   - **Build Command**: `uv sync --frozen && uv cache prune --ci`
+   - **Start Command**: `uv run python main.py --serve --no-reload --port $PORT`
+   - **Health Check Path**: `/`
+   - **Auto-Deploy**: Yes (tự deploy khi commit lên `main`)
+3. Bấm **Deploy Web Service**.
+4. **Lưu ý dữ liệu**: Ổ đĩa Render Free là tạm thời (ephemeral). Để cập nhật từ vựng SQLite lâu dài, hãy chỉnh sửa ở máy local qua `make dev`, sau đó commit file `data/words.sqlite` rồi push lên GitHub để Render tự đồng bộ.
+
+## Deploy Cloudflare Pages (tuỳ chọn — chỉ Chơi đơn)
 
 Cần login Cloudflare. Local chơi thì **không** cần.
 
@@ -173,7 +188,7 @@ Cần login Cloudflare. Local chơi thì **không** cần.
 2. Actions → **Deploy Cloudflare Pages** → Run workflow (không chạy khi `git push`)
 3. Hoặc: `npx wrangler login` rồi `uv run python main.py --deploy`
 
-`DOANCHU_DEBUG=0` trên Pages (không mở tab Kho từ cho khách).
+`DOANCHU_DEBUG=0` trên Pages (không mở tab Kho từ cho khách). Note: Pages chỉ chạy file tĩnh, không hỗ trợ WebSocket phòng nhiều người.
 
 ## Gỡ lỗi thường gặp
 
