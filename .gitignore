@@ -17,6 +17,7 @@ data/words.sqlite-*
 
 # Runtime tunnel/server
 run/
+.env
 
 # Optional nested clones (not needed; kho từ đã nằm trong data/words.sqlite)
 vendor/

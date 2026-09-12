@@ -1,1 +1,2 @@
+# Cloudflare Pages local (wrangler). Trần phòng nằm ở .env của process Python, không file này.
 DOANCHU_DEBUG=1

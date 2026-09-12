@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from paths import load_dotenv
+
 
 def _env_int(name: str, default: int, *, lo: int, hi: int) -> int:
     raw = os.environ.get(name, "").strip()
@@ -37,12 +39,13 @@ class Limits:
 
     @classmethod
     def from_env(cls) -> Limits:
+        load_dotenv()
         max_players = _env_int("DOANCHU_MAX_PLAYERS", 8, lo=2, hi=8)
         max_rooms = _env_int("DOANCHU_MAX_ROOMS", 12, lo=1, hi=200)
         return cls(
             max_rooms=max_rooms,
             max_players=max_players,
-            max_party=_env_int("DOANCHU_MAX_PARTY", max_rooms * max_players, lo=2, hi=400),
+            max_party=_env_int("DOANCHU_MAX_PARTY", 40, lo=2, hi=400),
             max_solo=_env_int("DOANCHU_MAX_SOLO", 40, lo=1, hi=500),
             room_ttl=_env_float("DOANCHU_ROOM_TTL", 45 * 60, lo=60, hi=24 * 3600),
             presence_ttl=_env_float("DOANCHU_SOLO_TTL", 45.0, lo=15, hi=300),
