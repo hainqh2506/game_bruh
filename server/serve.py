@@ -118,7 +118,16 @@ def serve_play(port: int = DEFAULT_PORT, tunnel: bool = False, reload: bool = Tr
     print(f"Local: {url}", flush=True)
     print(f"Debug tab: {'ON' if on else 'OFF'}  (DOANCHU_DEBUG=1 to enable)", flush=True)
     print(f"Reload: {'ON' if reload else 'OFF'}  (--no-reload to disable)", flush=True)
+    from game.room import HUB
+
+    lim = HUB.limits
     print(f"Rooms:  ON  (WebSocket /ws trên cùng cổng {port})", flush=True)
+    print(
+        f"Limits: {lim.max_solo} solo · {lim.max_rooms} phòng · "
+        f"{lim.max_players}/phòng · {lim.max_party} người phòng "
+        f"(DOANCHU_MAX_SOLO / _ROOMS / _PLAYERS / _PARTY)",
+        flush=True,
+    )
     print(f"Status file: {LINK_PATH}", flush=True)
     if reload:
         threading.Thread(target=watch_play_files, args=(state,), daemon=True).start()

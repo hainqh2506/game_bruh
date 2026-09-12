@@ -75,6 +75,28 @@ Trên **cùng link** `make dev` / tunnel (không phải Cloudflare Pages — Pag
 
 **Chơi đơn** là mode riêng, bảng hiện ngay. Refresh trong phòng giữ token (`sessionStorage`) và khôi phục bảng của mình.
 
+### Trần máy chủ (tránh sập host nhỏ)
+
+Phòng nằm **trong RAM** của process Python. GitHub Pages / Cloudflare Pages chỉ được **chơi đơn** (file tĩnh, không WebSocket). Party vẫn cần máy chạy `make dev` / `--tunnel`, hoặc VPS nhỏ — không host 24/7 trên GitHub Actions.
+
+Mặc định (đổi bằng biến môi trường):
+
+| Biến | Mặc định | Nghĩa |
+|---|---|---|
+| `DOANCHU_MAX_SOLO` | 40 | Slot chơi đơn đồng thời trên process này |
+| `DOANCHU_MAX_ROOMS` | 12 | Số phòng cùng lúc |
+| `DOANCHU_MAX_PLAYERS` | 8 | Người / phòng (2–8) |
+| `DOANCHU_MAX_PARTY` | 12×8 | Tổng người trong mọi phòng |
+| `DOANCHU_ROOM_TTL` | 2700 | Xóa phòng idle (giây) |
+
+```bash
+DOANCHU_MAX_ROOMS=6 DOANCHU_MAX_SOLO=20 make dev
+```
+
+Lobby hiện `phòng đang dùng / trần`. Hết slot thì tạo phòng / chơi đơn báo lỗi, không nhận thêm.
+
+Muốn solo không tốn máy bạn: deploy Pages (`make` / workflow) rồi gửi link Pages; tunnel chỉ để party.
+
 ### Cài đặt
 
 Thanh **Cài đặt** đóng sẵn. Bấm để mở → số từ → độ dài từng từ (hoặc “bất kỳ”) → **Sinh câu hỏi**. **Ván mới** giữ đúng bộ lọc đó.

@@ -17,6 +17,7 @@ from game.engine import (
     pick_answer,
     puzzle_meta,
 )
+from game.limits import Limits
 from game.protocol import Server
 
 MAX_PLAYERS = 8
@@ -75,11 +76,16 @@ class RoomSession:
     id: str
     host_id: str
     settings: dict[str, Any]
+    max_players: int = MAX_PLAYERS
     answer: str = ""
     status: str = "lobby"
     players: dict[str, Player] = field(default_factory=dict)
     started_at: float | None = None
     finished_at: float | None = None
+    updated_at: float = field(default_factory=_now)
+
+    def touch(self) -> None:
+        self.updated_at = _now()
 
     def _player_by_token(self, token: str) -> Player | None:
         for player in self.players.values():
@@ -109,7 +115,7 @@ class RoomSession:
             "settings": self.settings,
             "players": self.roster(),
             "max_guesses": MAX_ATTEMPTS,
-            "max_players": MAX_PLAYERS,
+            "max_players": self.max_players,
         }
         if self.status in {"playing", "finished"} and self.answer:
             payload.update(puzzle_meta(self.answer))
@@ -145,6 +151,7 @@ class RoomSession:
             raise ValueError("Ván đang chạy")
         if len(self.players) < 2:
             raise ValueError("Cần ít nhất 2 người")
+        self.touch()
         self.answer = pick_answer(self.settings)
         self.status = "playing"
         self.started_at = _now()
@@ -183,6 +190,7 @@ class RoomSession:
         guess = unicodedata.normalize("NFC", str(guess or "")).lower()
         if not is_playable(guess, self.answer):
             raise ValueError("Từ không hợp lệ.")
+        self.touch()
         marks = mark_guess(guess, self.answer)
         player.attempts += 1
         player.guesses.append(guess)
@@ -225,12 +233,42 @@ class RoomSession:
 
 
 class RoomHub:
-    def __init__(self) -> None:
+    def __init__(self, limits: Limits | None = None) -> None:
+        self.limits = limits or Limits.from_env()
         self._rooms: dict[str, RoomSession] = {}
         self._lock = threading.RLock()
 
+    def party_count(self) -> int:
+        return sum(len(room.players) for room in self._rooms.values())
+
+    def usage(self) -> dict[str, int]:
+        with self._lock:
+            return {
+                **self.limits.public(),
+                "rooms": len(self._rooms),
+                "party": self.party_count(),
+            }
+
+    def _drop_idle_rooms(self) -> list[str]:
+        now = _now()
+        dead: list[str] = []
+        for room_id, room in list(self._rooms.items()):
+            connected = any(not p.disconnected for p in room.players.values())
+            if connected:
+                continue
+            if now - room.updated_at >= self.limits.room_ttl:
+                dead.append(room_id)
+        for room_id in dead:
+            self._rooms.pop(room_id, None)
+        return dead
+
     def create(self, name: str, settings: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
+            self._drop_idle_rooms()
+            if len(self._rooms) >= self.limits.max_rooms:
+                raise ValueError(f"Hết slot phòng ({self.limits.max_rooms}). Thử lại sau.")
+            if self.party_count() >= self.limits.max_party:
+                raise ValueError(f"Máy chủ đông ({self.limits.max_party} người phòng). Thử lại sau.")
             room_id = _new_code()
             while room_id in self._rooms:
                 room_id = _new_code()
@@ -239,6 +277,7 @@ class RoomHub:
                 id=room_id,
                 host_id=host.id,
                 settings=normalize_settings(settings),
+                max_players=self.limits.max_players,
             )
             room.players[host.id] = host
             self._rooms[room_id] = room
@@ -254,15 +293,19 @@ class RoomHub:
                 if player:
                     player.disconnected = False
                     player.last_seen = _now()
+                    room.touch()
                     if name:
                         player.name = _clean_name(name)
                     return self._auth_payload(room, player)
-            if len(room.players) >= MAX_PLAYERS:
-                raise ValueError("Phòng đầy")
+            if len(room.players) >= room.max_players:
+                raise ValueError(f"Phòng đầy ({room.max_players} người)")
+            if self.party_count() >= self.limits.max_party:
+                raise ValueError(f"Máy chủ đông ({self.limits.max_party} người phòng). Thử lại sau.")
             if room.status == "finished":
                 raise ValueError("Ván đã kết thúc")
             player = Player(id=_new_id(), name=_clean_name(name), token=secrets.token_urlsafe(16))
             room.players[player.id] = player
+            room.touch()
             return self._auth_payload(room, player)
 
     def get(self, room_id: str) -> RoomSession | None:
@@ -306,6 +349,7 @@ class RoomHub:
                                 {"type": Server.PEER_UPDATE, "player": player.public(), "players": room.roster()},
                             )
                         )
+            self._drop_idle_rooms()
         return events
 
     def _auth_payload(self, room: RoomSession, player: Player) -> dict[str, Any]:

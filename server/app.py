@@ -12,9 +12,10 @@ from fastapi.staticfiles import StaticFiles
 
 from game.room import HUB
 from game.ws import BUS
+from server.presence import SOLO
 from paths import PUBLIC_DIR
 from server.httputil import NoCacheStatic
-from server.routes import config, phrases, reload as reload_routes, rooms
+from server.routes import config, phrases, presence, reload as reload_routes, rooms
 from server.ws import room_socket
 
 
@@ -26,6 +27,7 @@ def create_app(*, reload: bool, debug: bool, reload_state: Any) -> FastAPI:
                 await asyncio.sleep(10)
                 for room_id, event in HUB.sweep_stale():
                     await BUS.broadcast(room_id, event)
+                SOLO.usage()
 
         task = asyncio.create_task(loop())
         try:
@@ -39,7 +41,7 @@ def create_app(*, reload: bool, debug: bool, reload_state: Any) -> FastAPI:
     app.state.reload_state = reload_state
     app.add_middleware(NoCacheStatic)
 
-    for module in (config, reload_routes, phrases, rooms):
+    for module in (config, reload_routes, phrases, rooms, presence):
         app.include_router(module.router)
 
     app.add_api_websocket_route("/ws", room_socket)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from game.limits import Limits
 from game.room import RoomHub
 
 
@@ -50,6 +51,27 @@ def test_invalid_guess_rejected() -> None:
         raise AssertionError("should fail")
     except ValueError as exc:
         assert "hợp lệ" in str(exc)
+
+
+def test_max_rooms_and_party_caps() -> None:
+    hub = RoomHub(Limits(max_rooms=1, max_players=2, max_party=2, room_ttl=3600))
+    hub.create("A")
+    try:
+        hub.create("B")
+        raise AssertionError("should fail")
+    except ValueError as exc:
+        assert "phòng" in str(exc).lower() or "slot" in str(exc).lower()
+
+
+def test_max_players_per_room() -> None:
+    hub = RoomHub(Limits(max_rooms=3, max_players=2, max_party=8, room_ttl=3600))
+    a = hub.create("A")
+    hub.join(a["room_id"], "B")
+    try:
+        hub.join(a["room_id"], "C")
+        raise AssertionError("should fail")
+    except ValueError as exc:
+        assert "đầy" in str(exc)
 
 
 def test_need_two_players() -> None:

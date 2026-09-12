@@ -272,8 +272,36 @@
     });
   }
 
+  async function holdSoloSlot() {
+    if (ROOM_MODE) return;
+    let token = sessionStorage.getItem("doanchu:soloToken") || "";
+    try {
+      const res = await origFetch("/api/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token })
+      });
+      if (res.status === 404) return;
+      const data = await res.json().catch(() => ({}));
+      if (data.token) sessionStorage.setItem("doanchu:soloToken", data.token);
+      if (res.ok) {
+        document.getElementById("solo-full")?.remove();
+        return;
+      }
+      let box = document.getElementById("solo-full");
+      if (!box) {
+        box = document.createElement("p");
+        box.id = "solo-full";
+        document.querySelector(".container")?.prepend(box);
+      }
+      box.textContent = data.error || "Máy chủ đang đông — thử lại sau.";
+    } catch (e) {}
+  }
+
   window.addEventListener("DOMContentLoaded", () => {
     mountSettings();
+    holdSoloSlot();
+    if (!ROOM_MODE) setInterval(holdSoloSlot, 20000);
     const reload = () => location.reload();
     const newBtn = document.getElementById("new-game");
     if (newBtn) {

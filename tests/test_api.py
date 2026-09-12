@@ -37,6 +37,30 @@ def test_create_join_rest_no_answer() -> None:
         HUB._rooms.pop(created["room_id"], None)
 
 
+def test_config_exposes_limits() -> None:
+    with _client() as client:
+        cfg = client.get("/api/config").json()
+        assert cfg["rooms"] is True
+        assert cfg["limits"]["max_rooms"] >= 1
+        assert cfg["limits"]["max_players"] >= 2
+        assert "solo" in cfg["limits"]
+
+
+def test_presence_caps_solo() -> None:
+    from game.limits import Limits
+    from server.presence import SoloPresence
+
+    slot = SoloPresence(Limits(max_solo=1, presence_ttl=60))
+    first = slot.touch(None)
+    again = slot.touch(first["token"])
+    assert again["token"] == first["token"]
+    try:
+        slot.touch(None)
+        raise AssertionError("should fail")
+    except ValueError:
+        pass
+
+
 def test_ws_room_payload_hides_answer() -> None:
     with _client() as client:
         created = client.post("/api/rooms", json={"name": "Hải"}).json()

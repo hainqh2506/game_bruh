@@ -355,6 +355,13 @@
         ? "Đang chờ chủ phòng bắt đầu…"
         : "Tạo phòng hoặc nhập mã để chơi cùng bạn.";
     }
+    const caps = document.getElementById("room-caps");
+    if (caps && window.__DOANCHU_LIMITS) {
+      const L = window.__DOANCHU_LIMITS;
+      caps.textContent =
+        `Slot: ${L.rooms || 0}/${L.max_rooms} phòng · ` +
+        `${L.party || 0}/${L.max_party} người · tối đa ${L.max_players}/phòng`;
+    }
     syncPlayfield();
   }
 
@@ -373,6 +380,7 @@
     box.className = queryRoom ? "in" : "idle";
     box.innerHTML = `
       <h2>Phòng</h2>
+      <p id="room-caps" class="room-caps"></p>
       <div id="room-lobby">
         <div class="room-row">
           <input id="room-name" type="text" maxlength="20" placeholder="Tên của bạn" autocomplete="nickname"/>
@@ -445,6 +453,13 @@
 
   async function boot() {
     mount();
+    try {
+      const cfg = await fetch("/api/config", { cache: "no-store" }).then((r) => r.json());
+      if (cfg.limits) {
+        window.__DOANCHU_LIMITS = cfg.limits;
+        render();
+      }
+    } catch (e) {}
     if (!queryRoom) return;
     try {
       const data = await api(`/api/rooms/${queryRoom}/join`, {
