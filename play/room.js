@@ -677,6 +677,12 @@
     },
     rematch() {
       if (isHost() && state.status === "finished") send("rematch");
+    },
+    canNextRound() {
+      return isHost() && state.status === "round_summary";
+    },
+    nextRound() {
+      if (isHost() && state.status === "round_summary") send("next_round");
     }
   };
 
