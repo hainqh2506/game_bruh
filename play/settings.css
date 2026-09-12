@@ -89,3 +89,46 @@
   transform: translateY(1px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, .25);
 }
+
+/* How-to + extra panels: wrap on phone, scroll instead of clipping. */
+.howto-bar {
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+}
+.howto-bar details {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  box-sizing: border-box;
+}
+.howto-bar details > div {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#game-settings,
+#room-panel {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .howto-bar details[open] > div,
+  #game-settings[open] .settings-body {
+    max-height: min(40dvh, 280px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+  }
+  .container:has(.howto-bar details[open]),
+  .container:has(#game-settings[open]) {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}

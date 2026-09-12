@@ -1,0 +1,148 @@
+#mode-bar {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+#mode-bar button {
+  flex: 1 1 0;
+  background: rgba(0, 0, 0, .22);
+  color: #ffeb7a;
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+}
+#mode-bar button.on {
+  background: #fc0;
+  color: #831810;
+}
+body.solo-play #room-panel {
+  display: none;
+}
+body.party-lobby #rows,
+body.party-lobby .kb,
+body.party-lobby #message,
+body.party-lobby #loader,
+body.party-lobby #desktop-rules,
+body.party-lobby #new-game {
+  display: none !important;
+}
+
+#room-panel {
+  background: rgba(0, 0, 0, .18);
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  color: #eee;
+}
+#room-panel h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffeb7a;
+}
+.room-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+}
+.room-row input {
+  background: #2a1515;
+  color: #fff;
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 120px;
+}
+.room-row input#room-code-in {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  width: 7em;
+}
+.room-row button,
+#room-actions button {
+  background: #fc0;
+  color: #831810;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+}
+.room-row button.ghost,
+#room-actions button.ghost {
+  background: transparent;
+  color: #ffeb7a;
+  border: 1px solid #d4af37;
+  box-shadow: none;
+}
+#room-code-out {
+  font-weight: 800;
+  letter-spacing: .16em;
+  color: #fc0;
+  font-size: 22px;
+}
+#room-status {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #ddd;
+}
+#room-status.error {
+  color: #fecaca;
+}
+#room-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#room-roster li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  background: rgba(0, 0, 0, .22);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+#room-roster .you {
+  color: #ffeb7a;
+}
+#room-roster .badge {
+  font-size: 12px;
+  color: #ddd;
+  font-weight: 700;
+}
+#room-roster .badge.done {
+  color: #86efac;
+}
+#room-roster .badge.off {
+  color: #fca5a5;
+}
+#room-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+#room-lobby,
+#room-in {
+  display: none;
+}
+#room-panel.idle #room-lobby,
+#room-panel.in #room-in {
+  display: block;
+}

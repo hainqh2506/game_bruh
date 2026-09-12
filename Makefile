@@ -12,7 +12,7 @@ help:
 	@echo "make build   - build public/"
 	@echo "make filter  - lọc tục vào pool rejected"
 	@echo "make curate  - lọc Play còn từ ghép thông dụng (Viet11K)"
-	@echo "make test    - test tô màu xanh lá / vàng / xanh dương / xám"
+	@echo "make test    - test tô màu (JS + Python) + phòng"
 	@echo "make link    - in link hiện tại"
 
 dev:
@@ -35,6 +35,7 @@ curate:
 
 test:
 	node --test tests/marks.test.js
+	$(UV) pytest tests/test_engine.py tests/test_room.py tests/test_api.py
 
 link:
 	@cat run/LINK.txt 2>/dev/null || echo "Chưa có tunnel. Chạy: make dev"

@@ -3,28 +3,23 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import unicodedata
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-DATA_DIR = ROOT / "data"
-PLAY_DIR = ROOT / "play"
+from game.phrases import VIET_WORD_RE
+from paths import DATA_DIR, PLAY_DIR, ROOT, VENDOR_DIR
+
 DB_PATH = DATA_DIR / "words.sqlite"
 VULGAR_PATH = DATA_DIR / "vulgar.txt"
 WORDLIST_DIRS = (
     DATA_DIR / "open-source" / "vietnamese-wordlist",
-    ROOT / "vendor" / "vietnamese-wordlist",
+    VENDOR_DIR / "vietnamese-wordlist",
 )
 
 POOLS = ("raw", "play", "rejected")
 PLAY_MIN_WORD_LEN = 2
 PLAY_MAX_WORD_LEN = 5
-VIET_WORD_RE = re.compile(
-    r"^[a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]+$",
-    re.IGNORECASE,
-)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS phrases (

@@ -177,7 +177,9 @@
     debug.hidden = true;
     debug.innerHTML = `
       <h2>Quản lý kho từ</h2>
-      <p id="debug-answer">Đáp án ván hiện tại (pool Play): <code>${esc(window.__DOANCHU_ANSWER || "?")}</code></p>
+      <p id="debug-answer">${window.__DOANCHU_ROOM_MODE
+        ? "Phòng party: đáp án chỉ nằm trên server, không hiện ở đây."
+        : `Đáp án ván hiện tại (pool Play): <code>${esc(window.__DOANCHU_ANSWER || "?")}</code>`}</p>
       <p class="hint">Play = từ ghép thông dụng (Viet11K, mỗi từ 2–5 chữ). Raw = dump gốc. Đã loại = bậy/không dùng. Sửa Play xong F5 để ván mới lấy pool mới.</p>
       <div id="pool-tabs">
         ${POOLS.map(({ id, label }) =>

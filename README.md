@@ -35,7 +35,7 @@ Tắt: `make stop` hoặc Ctrl+C.
 | `make serve` | Chỉ localhost, có debug |
 | `make stop` | Tắt python + cloudflared |
 | `make build` | Build `public/` |
-| `make test` | Test màu xanh lá / vàng / xanh dương / xám |
+| `make test` | Test màu (JS + Python) và phòng in-memory |
 | `make curate` | Dựng lại pool Play từ Viet11K |
 | `make filter` | Lọc tục → rejected |
 | `make link` | In link tunnel hiện tại |
@@ -62,6 +62,18 @@ Cụm **hai từ**, 6 lần thử. Mỗi ô một chữ (kể cả dấu). Kho�
 Ví dụ ván `3 + 3`: lần 1 gõ `aei ăâê` hoặc `aăâ oôơ` để loại nguyên âm (xám = không có, xanh dương = đúng gốc sai dấu).
 
 Đáp án vẫn lấy ngẫu nhiên từ kho **Play** (~7.3k cụm thông dụng).
+
+### Phòng nhiều người
+
+Trên **cùng link** `make dev` / tunnel (không phải Cloudflare Pages — Pages không chạy WebSocket):
+
+1. Chọn **Cùng bạn** (không trộn với ván chơi đơn)
+2. **Tạo phòng** → mã 4 ký tự + copy `/?room=ABCD` — hoặc bạn bè nhập mã
+3. Chủ phòng bấm **Bắt đầu** (cần 2–8 người)
+4. Cùng một đáp án, đoán đồng thời, 6 lần. Người khác chỉ thấy tên / số lần đoán / đã xong — không thấy bảng màu.
+5. Ai đúng trước thắng (`solved_at`). Người còn lại đoán tiếp để xếp hạng. **Chơi lại** giữ cùng nhóm, đáp án mới.
+
+**Chơi đơn** là mode riêng, bảng hiện ngay. Refresh trong phòng giữ token (`sessionStorage`) và khôi phục bảng của mình.
 
 ### Cài đặt
 
@@ -90,21 +102,29 @@ Danh sách tục: `data/vulgar.txt`.
 
 ## Sửa code (reload)
 
-`make dev` watch `play/mock.js`, `marks.js`, `debug.js`, `debug.css`, `settings.css`, `reload.js`. Lưu file → trang tự F5, **URL tunnel không đổi**.
+`make dev` watch `play/*.js`, `*.css`. Lưu file → trang tự F5, **URL tunnel không đổi**.
 
-Sửa `main.py` / `db.py` thì phải chạy lại `make dev` (đổi link tunnel).
+Sửa `main.py` / `db.py` / `game/` / `server/` thì phải chạy lại `make dev` (đổi link tunnel).
 
 Đừng chạy `make dev` lần nữa chỉ để sửa frontend.
 
 ## Cấu trúc
 
 ```
-play/           mock, tô màu, cài đặt, debug UI
+play/           mock, tô màu, phòng, cài đặt, debug UI
+game/           luật chơi: engine, RoomHub, protocol (không FastAPI)
+server/         HTTP/WS: routes, build public/, serve + tunnel
+tools/          import kho từ, (snapshot client nằm CLI)
+main.py         CLI
 source/client/  snapshot HTML/CSS/JS gốc (build UI)
 data/           words.sqlite, Viet11K, vulgar.txt
-tests/          node:test tô màu
+tests/          node:test tô màu; pytest engine/phòng
 functions/      Cloudflare Pages /api/config
 ```
+
+Thêm API: tạo `server/routes/<ten>.py` rồi `include_router` trong `server/app.py`.
+Thêm lệnh WS: hằng số ở `game/protocol.py` + handler trong `server/ws.py` `HANDLERS`.
+Thêm file JS/CSS: ghi vào `PLAY_SCRIPTS` / `PLAY_STYLES` trong `server/build.py`.
 
 `public/` là output, gitignore.
 

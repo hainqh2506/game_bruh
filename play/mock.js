@@ -74,9 +74,12 @@
 
   const settings = loadSettings();
   const matched = poolFor(settings);
-  const answer = pickAnswer(settings);
-  window.__DOANCHU_ANSWER = answer;
+  const pageParams = new URLSearchParams(location.search);
+  const ROOM_MODE = pageParams.has("room") || pageParams.get("mode") === "party";
+  const answer = ROOM_MODE ? "" : pickAnswer(settings);
+  window.__DOANCHU_ANSWER = ROOM_MODE ? "" : answer;
   window.__DOANCHU_SETTINGS = settings;
+  window.__DOANCHU_ROOM_MODE = ROOM_MODE;
 
   const markApi = globalThis.DOANCHU_MARK || {};
   const markGuess = markApi.markGuess;
@@ -97,6 +100,33 @@
   window.fetch = async (input, init = {}) => {
     const url = String(typeof input === "string" ? input : input.url || "");
     if (url.includes("getWord.php")) {
+      if (ROOM_MODE) {
+        const api = window.DOANCHU_ROOM;
+        if (!api || !api.whenStarted) {
+          return json({ error: "room chưa sẵn sàng" }, 503);
+        }
+        const info = await api.whenStarted();
+        const date = "room-" + info.room_id + "-" + String(info.started_at || 0);
+        if (info.board && info.board.guesses && info.board.guesses.length) {
+          try {
+            localStorage.setItem("doanchu:v3:" + date, JSON.stringify({
+              version: 3,
+              date,
+              len: info.length,
+              spaceIndex: info.spaceIndex,
+              guesses: info.board.guesses,
+              marksList: info.board.marksList,
+              current: "",
+              solvedAnswer: ""
+            }));
+          } catch (e) {}
+        }
+        return json({
+          date,
+          length: info.length,
+          spaceIndex: info.spaceIndex
+        });
+      }
       return json({
         date: "unlimited-" + Date.now(),
         length: answer.length,
@@ -111,6 +141,18 @@
         body = {};
       }
       const guess = String(body.guess || "").normalize("NFC").toLowerCase();
+      if (ROOM_MODE) {
+        const api = window.DOANCHU_ROOM;
+        if (!api || !api.submitGuess) {
+          return json({ status: "error", message: "Chưa vào phòng." });
+        }
+        try {
+          const result = await api.submitGuess(guess, Number(body.attempt) || 1);
+          return json(result);
+        } catch (err) {
+          return json({ status: "error", message: err.message || "Từ không hợp lệ." });
+        }
+      }
       if (!isPlayableGuess(guess, answer)) {
         return json({ status: "error", message: "Từ không hợp lệ." });
       }
@@ -213,13 +255,19 @@
       updateMatchHint();
     });
     document.getElementById("settings-lengths").addEventListener("change", updateMatchHint);
-    document.getElementById("settings-go").addEventListener("click", () => {
+    const goBtn = document.getElementById("settings-go");
+    if (ROOM_MODE && goBtn) goBtn.textContent = "Lưu cho phòng";
+    goBtn.addEventListener("click", () => {
       const next = readForm();
       if (!poolFor(next).length) {
         updateMatchHint();
         return;
       }
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+      if (ROOM_MODE) {
+        updateMatchHint();
+        return;
+      }
       location.reload();
     });
   }
@@ -228,7 +276,15 @@
     mountSettings();
     const reload = () => location.reload();
     const newBtn = document.getElementById("new-game");
-    if (newBtn) newBtn.onclick = reload;
+    if (newBtn) {
+      newBtn.onclick = () => {
+        if (ROOM_MODE && window.DOANCHU_ROOM && window.DOANCHU_ROOM.rematch) {
+          window.DOANCHU_ROOM.rematch();
+          return;
+        }
+        reload();
+      };
+    }
     const close = document.getElementById("endgame-close");
     const row = close && close.parentElement;
     if (row && !document.getElementById("endgame-new")) {
@@ -237,7 +293,13 @@
       b.textContent = "Ván mới";
       b.style.cssText =
         "padding:12px 24px;background:#fc0;color:#831810;border:none;border-radius:10px;font-weight:800;font-size:18px;cursor:pointer;";
-      b.onclick = reload;
+      b.onclick = () => {
+        if (ROOM_MODE && window.DOANCHU_ROOM && window.DOANCHU_ROOM.rematch) {
+          window.DOANCHU_ROOM.rematch();
+          return;
+        }
+        reload();
+      };
       row.insertBefore(b, close);
     }
   });
