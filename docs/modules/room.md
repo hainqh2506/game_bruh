@@ -39,7 +39,10 @@ stateDiagram-v2
 ## 4. Giao diện công khai (Public Interfaces)
 - **`RoomHub`**:
   - `create(name, settings) -> dict`: Tạo phòng mới (nhận `rounds`, `time_limit`), trả về token và mã phòng.
-  - `join(room_id, name, token) -> dict`: Tham gia phòng mới hoặc tái kết nối phòng cũ với token đã lưu.
+  - `join(room_id, name, token) -> dict`: Tham gia phòng mới hoặc tái kết nối:
+    - Nếu có `token`: Khôi phục phiên chơi ngay lập tức (`disconnected = False`).
+    - Nếu không có `token` (hoặc token bị xóa do đóng trình duyệt ẩn danh): Tự động kiểm tra người chơi đang "mất máy" (`disconnected = True`) trùng tên để re-claim vị trí mà không chặn người chơi cũ.
+    - Nếu là người lạ khi ván đang chạy: Chặn với thông báo `Ván đang chạy`.
   - `player_for(room_id, token) -> (RoomSession, Player)`: Lấy thông tin phiên phòng và người chơi an toàn theo token.
   - `sweep_stale() -> list[(room_id, event)]`: Quét dọn phòng/kết nối rác và kiểm tra hết giờ `time_limit`.
 - **`RoomSession`**:

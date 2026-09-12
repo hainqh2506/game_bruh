@@ -15,6 +15,22 @@ Tất cả các thay đổi kỹ thuật đáng chú ý của dự án sẽ đư
 - Ghi nhận quyết định kiến trúc ADR-005 vào `docs/DECISIONS.md`.
 - Ghi nhận tài liệu thiết kế chi tiết tại `docs/changes/2026-09-13-multi-round-match-scoring.md`.
 
+### Changed
+- Tối ưu hóa toàn diện giao diện Mobile:
+  - Nâng `font-size: 16px` cho các ô input và select để ngăn chặn hoàn toàn hiện tượng tự động zoom khó chịu trên iOS Safari.
+  - Chuyển hàng cấu hình phòng (Số câu & Thời gian) sang dạng Grid 2 cột dễ nhìn, dễ thao tác trên màn hình nhỏ.
+  - Tăng chiều cao vùng chạm (touch target ≥ 42px - 44px) và bật `touch-action: manipulation` loại bỏ 300ms độ trễ chạm.
+  - Thu gọn kích thước bảng kết quả Endgame Modal và ảnh canvas để các nút thao tác luôn nằm trọn trong màn hình mà không cần cuộn.
+
+### Fixed
+- Sửa lỗi hiển thị 2 nút "Đóng" nằm cạnh nhau trong modal kết thúc câu ở chế độ phòng.
+- Sửa lỗi mất kết nối và không nhận diện lại người chơi khi đóng/mở lại tab hoặc trình duyệt ẩn danh:
+  - Lưu trữ token phòng đa tầng (`localStorage` + `sessionStorage`) theo mã phòng.
+  - Bổ sung cơ chế tự động re-claim cho người chơi bị ngắt kết nối ("mất máy") khi vào lại bằng đúng tên.
+- Sửa lỗi không hiển thị link từ điển VDict khi người chơi đoán sai hoặc hết 6 lượt.
+- Ẩn triệt để thông tin liên hệ tĩnh ("Contact us") thừa ở chân modal kết quả.
+- Bổ sung trạng thái `round_summary` vào kiểm tra `inGame` trong `syncPlayfield()` để tránh ẩn nhầm bàn cờ và danh sách người chơi giữa 2 câu.
+
 ---
 
 ## 2026-09-12 (Tối)
