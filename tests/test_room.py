@@ -302,3 +302,123 @@ def test_rematch_before_finished_rejected() -> None:
     assert room.status == "playing"
     with pytest.raises(ValueError, match="kết thúc"):
         room.rematch(host)
+
+
+def test_multi_round_scoring_and_transitions() -> None:
+    hub = RoomHub()
+    a = hub.create("Host", {"words": 2, "lengths": [None, None], "rounds": 2, "time_limit": 120})
+    b = hub.join(a["room_id"], "Guest")
+    room, host = hub.player_for(a["room_id"], a["token"])
+    _, guest = hub.player_for(b["room_id"], b["token"])
+
+    assert room.total_rounds == 2
+    assert room.time_limit == 120
+
+    # Start match
+    started = room.start(host)
+    assert started["round"] == 1
+    assert started["total_rounds"] == 2
+    assert started["time_limit"] == 120
+
+    # Round 1: Host solves on attempt 1 (100 pts), Guest solves on attempt 2 (50 pts)
+    r1_ans = room.answer
+    out_host = room.submit_guess(host, r1_ans)
+    assert out_host["to_player"]["won"] is True
+    assert host.round_score == 100
+    assert host.total_score == 100
+    assert room.status == "playing"  # Guest hasn't finished yet
+
+    # Guest guesses wrong once, then right
+    room.submit_guess(guest, _wrong(r1_ans))
+    out_guest = room.submit_guess(guest, r1_ans)
+    assert guest.round_score == 50
+    assert guest.total_score == 50
+
+    # Round 1 completes -> round_summary
+    assert room.status == "round_summary"
+    assert out_guest["round_finished"] is not None
+    assert out_guest["round_finished"]["round"] == 1
+    assert out_guest["finished"] is None
+
+    # Host triggers next round
+    next_started = room.next_round(host)
+    assert next_started["round"] == 2
+    assert room.status == "playing"
+    assert room.current_round == 2
+    assert host.total_score == 100
+    assert guest.total_score == 50
+    assert host.attempts == 0
+    assert guest.attempts == 0
+
+    # Round 2: Guest solves on attempt 1 (100 pts -> 150 total), Host fails 6 times (0 pts -> 100 total)
+    r2_ans = room.answer
+    room.submit_guess(guest, r2_ans)
+    assert guest.round_score == 100
+    assert guest.total_score == 150
+
+    last = _lose(room, host)
+    assert host.round_score == 0
+    assert host.total_score == 100
+
+    # Match finishes
+    assert room.status == "finished"
+    assert last["finished"] is not None
+    assert last["finished"]["round"] == 2
+    ranking = room.ranking()
+    assert ranking[0]["id"] == guest.id
+    assert ranking[0]["total_score"] == 150
+    assert ranking[1]["id"] == host.id
+    assert ranking[1]["total_score"] == 100
+
+
+def test_tie_breaker_lower_time_wins() -> None:
+    hub = RoomHub()
+    a = hub.create("Player1", {"rounds": 1})
+    b = hub.join(a["room_id"], "Player2")
+    room, p1 = hub.player_for(a["room_id"], a["token"])
+    _, p2 = hub.player_for(b["room_id"], b["token"])
+    room.start(p1)
+
+    p1.total_score = 50
+    p1.total_time = 25.5
+
+    p2.total_score = 50
+    p2.total_time = 14.2  # Solved faster
+
+    ranks = room.ranking()
+    assert ranks[0]["id"] == p2.id
+    assert ranks[1]["id"] == p1.id
+
+
+def test_sweep_stale_round_time_limit() -> None:
+    hub = RoomHub()
+    a = hub.create("Host", {"rounds": 2, "time_limit": 60})
+    b = hub.join(a["room_id"], "Guest")
+    room, host = hub.player_for(a["room_id"], a["token"])
+    room.start(host)
+
+    # Fast forward round_started_at to 65 seconds ago
+    room.round_started_at = room.round_started_at - 65
+    events = hub.sweep_stale()
+    assert any(ev[1]["type"] == "round_finished" for ev in events)
+    assert room.status == "round_summary"
+    assert all(p.attempts == 6 for p in room.players.values())
+
+
+def test_reconnect_disconnected_player_without_token() -> None:
+    hub = RoomHub()
+    a = hub.create("Host", {"rounds": 2})
+    b = hub.join(a["room_id"], "Guest1")
+    room, host = hub.player_for(a["room_id"], a["token"])
+    room.start(host)
+
+    # Guest1 disconnects
+    hub.mark_disconnected(a["room_id"], b["token"])
+    assert room.players[b["player_id"]].disconnected is True
+
+    # Guest1 re-opens tab in new incognito window (token lost)
+    rejoin = hub.join(a["room_id"], "Guest1", token="")
+    assert rejoin["player_id"] == b["player_id"]
+    assert room.players[b["player_id"]].disconnected is False
+
+

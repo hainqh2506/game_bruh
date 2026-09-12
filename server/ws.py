@@ -32,8 +32,15 @@ async def on_guess(ws: WebSocket, room: RoomSession, player: Player, message: di
     out = room.submit_guess(player, str(message.get("guess") or ""))
     await BUS.send(ws, out["to_player"])
     await BUS.broadcast(room.id, out["broadcast"])
+    if out.get("round_finished"):
+        await BUS.broadcast(room.id, out["round_finished"])
     if out.get("finished"):
         await BUS.broadcast(room.id, out["finished"])
+
+
+async def on_next_round(ws: WebSocket, room: RoomSession, player: Player, message: dict[str, Any]) -> None:
+    started_event = room.next_round(player)
+    await BUS.broadcast(room.id, started_event)
 
 
 HANDLERS: dict[str, Handler] = {
@@ -41,6 +48,7 @@ HANDLERS: dict[str, Handler] = {
     Client.START: on_start,
     Client.REMATCH: on_rematch,
     Client.GUESS: on_guess,
+    Client.NEXT_ROUND: on_next_round,
 }
 
 

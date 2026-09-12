@@ -49,8 +49,9 @@ body.party-play #game-settings {
     font-size: 12px;
   }
   body.party-play #room-roster {
-    max-height: 72px;
+    max-height: 88px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   body.party-play #room-roster li {
     padding: 4px 8px;
@@ -58,6 +59,95 @@ body.party-play #game-settings {
   }
   body.party-play #room-actions {
     margin-top: 6px;
+  }
+  .room-setup-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    gap: 8px 10px;
+    width: 100%;
+    align-items: center;
+  }
+  .room-setup-row .room-select {
+    width: 100%;
+    min-height: 42px;
+    font-size: 16px !important;
+    box-sizing: border-box;
+  }
+  .room-row input {
+    font-size: 16px !important;
+    min-height: 42px;
+    box-sizing: border-box;
+  }
+  .room-row button,
+  #room-actions button {
+    min-height: 42px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .room-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  #room-code-out {
+    font-size: 18px !important;
+  }
+  #room-copy {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    min-height: 36px !important;
+  }
+  .round-badge {
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+  }
+  .room-timer {
+    font-size: 13px !important;
+  }
+  .summary-card {
+    padding: 8px 10px !important;
+  }
+  .summary-title {
+    font-size: 14px !important;
+  }
+  .summary-answer {
+    font-size: 13px !important;
+  }
+  .podium-item {
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+  }
+
+  /* Mobile Endgame Modal Optimization */
+  #endgame-popup {
+    padding: calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom)) 10px !important;
+  }
+  #endgame-modal {
+    border-width: 4px !important;
+    border-radius: 12px !important;
+  }
+  #endgame-modal > div {
+    margin: 8px !important;
+    padding: 14px 10px !important;
+  }
+  #endgame-title-wrap > div:first-child {
+    font-size: 20px !important;
+  }
+  #endgame-title-wrap > div:last-child {
+    font-size: 28px !important;
+    margin: 2px 0 6px !important;
+  }
+  #endgame-preview {
+    max-height: 150px !important;
+    width: auto !important;
+  }
+  #endgame-share,
+  #endgame-download,
+  #endgame-close,
+  #endgame-new {
+    min-height: 44px !important;
+    touch-action: manipulation;
   }
 }
 
@@ -181,4 +271,116 @@ body.party-play #game-settings {
 #room-panel.idle #room-lobby,
 #room-panel.in #room-in {
   display: block;
+}
+
+.room-setup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffeb7a;
+}
+.room-select {
+  background: #2a1515;
+  color: #fff;
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.room-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.round-badge {
+  background: #831810;
+  color: #ffeb7a;
+  border: 1px solid #d4af37;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+.room-timer {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 800;
+  color: #86efac;
+}
+.room-timer.danger {
+  color: #f87171;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.score-badge {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fc0;
+  margin-left: auto;
+  margin-right: 8px;
+}
+#room-summary-box {
+  margin: 10px 0;
+}
+.summary-card {
+  background: rgba(42, 21, 21, 0.85);
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.summary-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffeb7a;
+  margin-bottom: 4px;
+}
+.summary-answer {
+  font-size: 14px;
+  color: #eee;
+}
+.summary-answer strong {
+  color: #86efac;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.victory-card {
+  border: 2px solid #fc0;
+  background: linear-gradient(135deg, rgba(42, 21, 21, 0.95), rgba(70, 20, 20, 0.95));
+}
+.podium {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  text-align: left;
+}
+.podium-item {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.podium-item.gold {
+  border-left: 4px solid #ffd700;
+  color: #ffe066;
+}
+.podium-item.silver {
+  border-left: 4px solid #c0c0c0;
+  color: #f1f5f9;
+}
+.podium-item.bronze {
+  border-left: 4px solid #cd7f32;
+  color: #fed7aa;
 }

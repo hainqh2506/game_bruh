@@ -6,6 +6,7 @@ class Client:
     START = "start"
     REMATCH = "rematch"
     GUESS = "guess"
+    NEXT_ROUND = "next_round"
 
 
 class Server:
@@ -14,6 +15,7 @@ class Server:
     GUESS_RESULT = "guess_result"
     PEER_UPDATE = "peer_update"
     PEER_SOLVED = "peer_solved"
+    ROUND_FINISHED = "round_finished"
     FINISHED = "finished"
     ERROR = "error"
     PING = "ping"

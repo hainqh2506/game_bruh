@@ -327,13 +327,21 @@
     if (row && !document.getElementById("endgame-new")) {
       const b = document.createElement("button");
       b.id = "endgame-new";
-      b.textContent = ROOM_MODE ? "Đóng" : "Ván mới";
+      b.textContent = ROOM_MODE ? "" : "Ván mới";
       b.style.cssText =
         "padding:12px 24px;background:#fc0;color:#831810;border:none;border-radius:10px;font-weight:800;font-size:18px;cursor:pointer;";
+      if (ROOM_MODE) {
+        b.style.display = "none";
+      }
       b.onclick = () => {
         if (ROOM_MODE) {
-          if (window.DOANCHU_ROOM && window.DOANCHU_ROOM.canRematch && window.DOANCHU_ROOM.canRematch()) {
-            window.DOANCHU_ROOM.rematch();
+          const room = window.DOANCHU_ROOM;
+          if (room && room.canRematch && room.canRematch()) {
+            room.rematch();
+            return;
+          }
+          if (room && room.canNextRound && room.canNextRound()) {
+            room.nextRound();
             return;
           }
           if (close) close.click();
@@ -369,10 +377,10 @@
     );
   }
 
-  function syncVdictLink(sol, won) {
+  function syncVdictLink(sol) {
     const msg = document.getElementById("endgame-message");
     let a = document.getElementById("endgame-vdict");
-    const url = won ? vdictUrl(sol) : "";
+    const url = vdictUrl(sol);
     if (!url) {
       if (a) a.hidden = true;
       return;
@@ -449,14 +457,27 @@
     const won = Boolean(title && /chúc mừng/i.test(title.textContent || ""));
     const next = endgameCopy(won, sol);
     if (msg.textContent !== next) msg.textContent = next;
-    syncVdictLink(sol, won);
+    syncVdictLink(sol);
+
+    const contactLinks = popup.querySelectorAll('a[href^="mailto:"]');
+    contactLinks.forEach((link) => {
+      const container = link.closest("div[style*='text-align:center']") || link.parentElement;
+      if (container) container.style.display = "none";
+    });
+
     const newBtn = document.getElementById("endgame-new");
     if (!newBtn) return;
     if (ROOM_MODE) {
-      newBtn.textContent =
-        window.DOANCHU_ROOM && window.DOANCHU_ROOM.canRematch && window.DOANCHU_ROOM.canRematch()
-          ? "Chơi lại"
-          : "Đóng";
+      const room = window.DOANCHU_ROOM;
+      if (room && room.canRematch && room.canRematch()) {
+        newBtn.textContent = "Chơi lại";
+        newBtn.style.display = "";
+      } else if (room && room.canNextRound && room.canNextRound()) {
+        newBtn.textContent = "Câu tiếp theo";
+        newBtn.style.display = "";
+      } else {
+        newBtn.style.display = "none";
+      }
     }
   }
 

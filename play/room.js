@@ -38,17 +38,91 @@
   let pingTimer = null;
   let reconnectTimer = null;
   const guessWaiters = [];
+  const initialName = sessionStorage.getItem(STORE.name) || (() => {
+    try { return localStorage.getItem(STORE.name) || ""; } catch (e) { return ""; }
+  })();
   const state = {
     room_id: queryRoom,
     token: "",
     player_id: "",
-    name: sessionStorage.getItem(STORE.name) || "",
+    name: initialName,
     status: queryRoom ? "lobby" : "idle",
     host_id: "",
     players: [],
     ranking: [],
-    error: ""
+    error: "",
+    round: 1,
+    total_rounds: 1,
+    time_limit: 0,
+    started_at: 0,
+    round_summary: null
   };
+
+  let roundTimer = null;
+  let nextRoundCountdownTimer = null;
+
+  function stopTimer() {
+    if (roundTimer) {
+      clearInterval(roundTimer);
+      roundTimer = null;
+    }
+    const timerEl = document.getElementById("room-timer");
+    if (timerEl) timerEl.textContent = "";
+  }
+
+  function stopNextRoundCountdown() {
+    if (nextRoundCountdownTimer) {
+      clearInterval(nextRoundCountdownTimer);
+      nextRoundCountdownTimer = null;
+    }
+    const cdEl = document.getElementById("next-round-cd");
+    if (cdEl) cdEl.textContent = "";
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (!state.time_limit || state.status !== "playing") return;
+    function tick() {
+      const now = Math.floor(Date.now() / 1000);
+      const start = state.started_at || now;
+      const elapsed = now - start;
+      const left = Math.max(0, state.time_limit - elapsed);
+      const mins = String(Math.floor(left / 60)).padStart(2, "0");
+      const secs = String(left % 60).padStart(2, "0");
+      const timerEl = document.getElementById("room-timer");
+      if (timerEl) {
+        timerEl.textContent = `⏱️ ${mins}:${secs}`;
+        timerEl.classList.toggle("danger", left <= 20);
+      }
+      if (left <= 0) {
+        stopTimer();
+      }
+    }
+    tick();
+    roundTimer = setInterval(tick, 1000);
+  }
+
+  function startNextRoundCountdown() {
+    if (nextRoundCountdownTimer) {
+      clearInterval(nextRoundCountdownTimer);
+      nextRoundCountdownTimer = null;
+    }
+    let left = 5;
+    function tick() {
+      const cdEl = document.getElementById("next-round-cd");
+      if (cdEl) cdEl.textContent = `(${left}s)`;
+      if (left <= 0) {
+        clearInterval(nextRoundCountdownTimer);
+        nextRoundCountdownTimer = null;
+        if (isHost()) {
+          send("next_round");
+        }
+      }
+      left--;
+    }
+    tick();
+    nextRoundCountdownTimer = setInterval(tick, 1000);
+  }
 
   function loadSettings() {
     try {
@@ -59,12 +133,26 @@
   }
 
   function saveAuth(data) {
-    if (data.room_id) sessionStorage.setItem(STORE.room, data.room_id);
-    if (data.token) sessionStorage.setItem(STORE.token, data.token);
-    if (data.player_id) sessionStorage.setItem(STORE.player, data.player_id);
+    if (data.room_id) {
+      sessionStorage.setItem(STORE.room, data.room_id);
+      try { localStorage.setItem(STORE.room, data.room_id); } catch (e) {}
+    }
+    if (data.token) {
+      sessionStorage.setItem(STORE.token, data.token);
+      if (data.room_id) {
+        try { localStorage.setItem("doanchu:token:" + data.room_id, data.token); } catch (e) {}
+      }
+    }
+    if (data.player_id) {
+      sessionStorage.setItem(STORE.player, data.player_id);
+      if (data.room_id) {
+        try { localStorage.setItem("doanchu:player:" + data.room_id, data.player_id); } catch (e) {}
+      }
+    }
     if (data.name) {
       state.name = data.name;
       sessionStorage.setItem(STORE.name, data.name);
+      try { localStorage.setItem(STORE.name, data.name); } catch (e) {}
     }
     state.room_id = data.room_id || state.room_id;
     state.token = data.token || state.token;
@@ -76,13 +164,22 @@
   }
 
   function storedRoom() {
-    return normalizeRoomCode(sessionStorage.getItem(STORE.room) || "");
+    return normalizeRoomCode(sessionStorage.getItem(STORE.room) || (() => {
+      try { return localStorage.getItem(STORE.room) || ""; } catch (e) { return ""; }
+    })());
   }
 
   function tokenFor(roomId) {
     const room = normalizeRoomCode(roomId);
-    if (!room || storedRoom() !== room) return "";
-    return storedToken();
+    if (!room) return "";
+    if (storedRoom() === room && sessionStorage.getItem(STORE.token)) {
+      return sessionStorage.getItem(STORE.token);
+    }
+    try {
+      return localStorage.getItem("doanchu:token:" + room) || sessionStorage.getItem(STORE.token) || "";
+    } catch (e) {
+      return sessionStorage.getItem(STORE.token) || "";
+    }
   }
 
   async function api(path, body) {
@@ -122,10 +219,22 @@
     state.status = data.status || state.status;
     state.host_id = data.host_id || state.host_id;
     state.players = data.players || state.players;
+    state.round = data.round || state.round || 1;
+    state.total_rounds = data.total_rounds || state.total_rounds || 1;
+    state.time_limit = data.time_limit != null ? data.time_limit : state.time_limit;
+    state.started_at = data.started_at || state.started_at || 0;
     if (data.you) state.player_id = data.you.id;
     if (data.ranking) state.ranking = data.ranking;
-    if (data.status === "playing" || data.status === "finished") {
+    if (data.status === "playing" || data.status === "round_summary" || data.status === "finished") {
       resolveStarted(data);
+    }
+    if (data.status === "playing" && state.time_limit > 0) {
+      startTimer();
+    } else if (data.status !== "playing") {
+      stopTimer();
+    }
+    if (data.status !== "round_summary") {
+      stopNextRoundCountdown();
     }
     render();
   }
@@ -136,14 +245,33 @@
         applyRoom(msg);
         break;
       case "started":
+        stopNextRoundCountdown();
         state.status = "playing";
+        state.round = msg.round || state.round || 1;
+        state.total_rounds = msg.total_rounds || state.total_rounds || 1;
+        state.time_limit = msg.time_limit != null ? msg.time_limit : state.time_limit;
+        state.started_at = msg.started_at || 0;
         state.players = msg.players || state.players;
+        state.round_summary = null;
         resolveStarted(msg);
+        if (state.time_limit > 0) startTimer();
         if (document.querySelector(".row .tile")) {
           location.reload();
           return;
         }
         render();
+        break;
+      case "round_finished":
+        state.status = "round_summary";
+        state.round = msg.round || state.round;
+        state.total_rounds = msg.total_rounds || state.total_rounds;
+        state.ranking = msg.ranking || [];
+        state.round_summary = msg;
+        if (msg.players) state.players = msg.players;
+        stashSolution(msg.solution);
+        stopTimer();
+        render();
+        startNextRoundCountdown();
         break;
       case "guess_result": {
         stashSolution(msg.solution);
@@ -166,10 +294,14 @@
         render();
         break;
       case "finished":
+        stopNextRoundCountdown();
         state.status = "finished";
+        state.round = msg.round || state.round;
+        state.total_rounds = msg.total_rounds || state.total_rounds;
         state.ranking = msg.ranking || [];
         if (msg.players) state.players = msg.players;
         stashSolution(msg.solution);
+        stopTimer();
         render();
         break;
       case "ping":
@@ -237,9 +369,12 @@
 
   async function createRoom() {
     const name = (document.getElementById("room-name") || {}).value || state.name || "Chủ phòng";
+    const rounds = Number((document.getElementById("room-rounds-select") || {}).value) || 5;
+    const timeLimit = Number((document.getElementById("room-time-select") || {}).value) || 0;
     sessionStorage.setItem(STORE.name, name);
     try {
-      const data = await api("/api/rooms", { name, settings: loadSettings() });
+      const settings = Object.assign(loadSettings(), { rounds, time_limit: timeLimit });
+      const data = await api("/api/rooms", { name, settings, rounds, time_limit: timeLimit });
       saveAuth(data);
       goToRoom(data.room_id);
     } catch (err) {
@@ -302,7 +437,7 @@
   }
 
   function syncPlayfield() {
-    const inGame = state.status === "playing" || state.status === "finished";
+    const inGame = state.status === "playing" || state.status === "round_summary" || state.status === "finished";
     document.body.classList.toggle("solo-play", !partyMode);
     document.body.classList.toggle("party-lobby", partyMode && !inGame);
     document.body.classList.toggle("party-play", partyMode && inGame);
@@ -325,6 +460,8 @@
       .map((p) => {
         const you = p.id === state.player_id ? " you" : "";
         const host = p.id === state.host_id ? " · chủ" : "";
+        const score = p.total_score != null ? p.total_score : 0;
+        const roundScore = p.round_score ? ` (+${p.round_score})` : "";
         let badge = `${p.attempts || 0}/6`;
         let cls = "badge";
         if (p.solved) {
@@ -335,16 +472,33 @@
           badge += " · mất máy";
           cls += " off";
         }
-        return `<li><span class="${you.trim()}">${esc(p.name)}${host}${you ? " (bạn)" : ""}</span><span class="${cls}">${badge}</span></li>`;
+        return `<li>
+          <span class="${you.trim()}">${esc(p.name)}${host}${you ? " (bạn)" : ""}</span>
+          <span class="score-badge">${score}đ${roundScore}</span>
+          <span class="${cls}">${badge}</span>
+        </li>`;
       })
       .join("");
   }
 
   function statusText() {
     if (state.error) return state.error;
-    if (state.status === "lobby") return "Chờ chủ phòng bấm Bắt đầu (cần ≥ 2 người).";
-    if (state.status === "playing") return "Đang chơi — mọi người đoán cùng lúc.";
-    if (state.status === "finished") return "Hết ván. Chủ phòng có thể chơi lại cùng nhóm.";
+    if (state.status === "lobby") {
+      const rText = state.total_rounds > 1 ? `Trận ${state.total_rounds} câu. ` : "";
+      return `${rText}Chờ chủ phòng bấm Bắt đầu (cần ≥ 2 người).`;
+    }
+    if (state.status === "playing") {
+      const rText = state.total_rounds > 1 ? `Câu ${state.round}/${state.total_rounds}: ` : "";
+      return `${rText}Đang chơi — mọi người đoán cùng lúc.`;
+    }
+    if (state.status === "round_summary") {
+      return `Hết Câu ${state.round}/${state.total_rounds}. Chuẩn bị sang câu tiếp theo...`;
+    }
+    if (state.status === "finished") {
+      return state.total_rounds > 1
+        ? `Trận đấu hoàn tất (${state.total_rounds} câu)! Chủ phòng có thể chơi trận mới.`
+        : "Hết ván. Chủ phòng có thể chơi lại cùng nhóm.";
+    }
     return "";
   }
 
@@ -372,13 +526,56 @@
       status.textContent = statusText();
       status.classList.toggle("error", Boolean(state.error));
     }
+    const roundBadge = document.getElementById("room-round-badge");
+    if (roundBadge) {
+      if (state.total_rounds > 1 && (state.status === "playing" || state.status === "round_summary")) {
+        roundBadge.textContent = `Câu ${state.round}/${state.total_rounds}`;
+        roundBadge.hidden = false;
+      } else {
+        roundBadge.hidden = true;
+      }
+    }
     const startBtn = document.getElementById("room-start");
+    const nextBtn = document.getElementById("room-next");
     const rematchBtn = document.getElementById("room-rematch");
     if (startBtn) {
       startBtn.hidden = !(isHost() && state.status === "lobby");
     }
+    if (nextBtn) {
+      nextBtn.hidden = !(isHost() && state.status === "round_summary");
+    }
     if (rematchBtn) {
       rematchBtn.hidden = !(isHost() && state.status === "finished");
+    }
+    const summaryBox = document.getElementById("room-summary-box");
+    if (summaryBox) {
+      if (state.status === "round_summary" && state.round_summary) {
+        summaryBox.hidden = false;
+        summaryBox.innerHTML = `
+          <div class="summary-card">
+            <div class="summary-title">Kết thúc Câu ${state.round}/${state.total_rounds}</div>
+            <div class="summary-answer">Đáp án: <strong>${esc(state.round_summary.solution || "")}</strong></div>
+          </div>
+        `;
+      } else if (state.status === "finished" && state.total_rounds > 1 && (state.ranking || []).length) {
+        summaryBox.hidden = false;
+        const top1 = state.ranking[0];
+        const top2 = state.ranking[1];
+        const top3 = state.ranking[2];
+        summaryBox.innerHTML = `
+          <div class="summary-card victory-card">
+            <div class="summary-title">🏆 KẾT QUẢ CHUNG CUỘC 🏆</div>
+            <div class="podium">
+              ${top1 ? `<div class="podium-item gold">🥇 <strong>${esc(top1.name)}</strong>: ${top1.total_score || 0}đ</div>` : ""}
+              ${top2 ? `<div class="podium-item silver">🥈 ${esc(top2.name)}: ${top2.total_score || 0}đ</div>` : ""}
+              ${top3 ? `<div class="podium-item bronze">🥉 ${esc(top3.name)}: ${top3.total_score || 0}đ</div>` : ""}
+            </div>
+          </div>
+        `;
+      } else {
+        summaryBox.hidden = true;
+        summaryBox.innerHTML = "";
+      }
     }
     const loader = document.getElementById("loader");
     if (loader && partyMode && (state.status === "lobby" || !queryRoom)) {
@@ -416,6 +613,22 @@
         <div class="room-row">
           <input id="room-name" type="text" maxlength="20" placeholder="Tên của bạn" autocomplete="nickname"/>
         </div>
+        <div class="room-row room-setup-row">
+          <label for="room-rounds-select">Số câu:</label>
+          <select id="room-rounds-select" class="room-select">
+            <option value="5" selected>5 câu (Chuẩn)</option>
+            <option value="1">1 câu (Nhanh)</option>
+            <option value="3">3 câu</option>
+            <option value="10">10 câu (Marathon)</option>
+          </select>
+          <label for="room-time-select">Thời gian:</label>
+          <select id="room-time-select" class="room-select">
+            <option value="0" selected>Không giới hạn</option>
+            <option value="120">2 phút</option>
+            <option value="180">3 phút</option>
+            <option value="300">5 phút</option>
+          </select>
+        </div>
         <div class="room-row">
           <button type="button" id="room-create">Tạo phòng</button>
           <input id="room-code-in" type="text" maxlength="4" placeholder="MÃ" autocomplete="off"/>
@@ -423,15 +636,19 @@
         </div>
       </div>
       <div id="room-in">
-        <div class="room-row">
+        <div class="room-row room-header-row">
           <span>Mã</span>
           <span id="room-code-out">${esc(state.room_id || "----")}</span>
           <button type="button" class="ghost" id="room-copy">Copy link</button>
+          <span id="room-round-badge" class="round-badge" hidden></span>
+          <span id="room-timer" class="room-timer"></span>
         </div>
         <p id="room-status"></p>
+        <div id="room-summary-box" hidden></div>
         <ul id="room-roster"></ul>
         <div id="room-actions">
           <button type="button" id="room-start">Bắt đầu</button>
+          <button type="button" id="room-next" hidden>Câu tiếp theo <span id="next-round-cd"></span></button>
           <button type="button" id="room-rematch">Chơi lại</button>
           <button type="button" class="ghost" id="room-leave">Rời phòng</button>
         </div>
@@ -458,6 +675,7 @@
     });
     document.getElementById("room-copy").onclick = copyLink;
     document.getElementById("room-start").onclick = () => send("start");
+    document.getElementById("room-next").onclick = () => send("next_round");
     document.getElementById("room-rematch").onclick = () => send("rematch");
     document.getElementById("room-leave").onclick = leaveRoom;
     render();
@@ -485,6 +703,12 @@
     },
     rematch() {
       if (isHost() && state.status === "finished") send("rematch");
+    },
+    canNextRound() {
+      return isHost() && state.status === "round_summary";
+    },
+    nextRound() {
+      if (isHost() && state.status === "round_summary") send("next_round");
     }
   };
 
