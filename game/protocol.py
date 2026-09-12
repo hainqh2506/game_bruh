@@ -7,6 +7,7 @@ class Client:
     REMATCH = "rematch"
     GUESS = "guess"
     NEXT_ROUND = "next_round"
+    REACTION = "reaction"
 
 
 class Server:
@@ -20,3 +21,4 @@ class Server:
     ERROR = "error"
     PING = "ping"
     PONG = "pong"
+    REACTION = "reaction"

@@ -108,3 +108,29 @@ Cơ chế phòng nhóm ban đầu chỉ chạy 1 câu duy nhất: người giả
 - **Ưu điểm:** Tăng tính cạnh tranh, ai cũng được chơi liên tục qua nhiều câu, có cơ hội lật kèo. Tương thích ngược 100% với các test cũ (`rounds=1`).
 - **Nhược điểm:** Phức tạp hóa nhẹ luồng state machine trong `RoomSession`.
 
+---
+
+## ADR-006: Cơ chế Keep-Alive cho Render Free bằng Endpoint `/health` & UptimeRobot
+
+- **Ngày:** 2026-09-13
+- **Trạng thái:** Accepted
+
+### Bối cảnh (Context)
+Render Web Service gói Free tự động chuyển sang chế độ ngủ (sleep/idle) sau 15 phút không nhận được inbound HTTP request hoặc tin nhắn WebSocket. Khi người dùng truy cập lại, dịch vụ mất khoảng 50–60 giây để khởi động lại container (cold start), gây trải nghiệm chờ đợi khó chịu.
+
+### Quyết định (Decision)
+1. **Endpoint `/health` siêu nhẹ:** Bổ sung router `@app.get("/health")` trả về JSON `{ "status": "ok" }` ngay tại [`server/app.py`](file:///d:/game_bruh/server/app.py). Endpoint này phản hồi trong < 2ms, không tải trang HTML, không nạp static asset hay truy vấn cơ sở dữ liệu.
+2. **Cấu hình UptimeRobot Free Monitor:**
+   - URL theo dõi: `https://game-bruh.onrender.com/health`
+   - Chu kỳ kiểm tra (Interval): **5 phút** (mức an toàn cao, nằm gọn dưới ngưỡng 15 phút của Render).
+3. **Cấu hình Render Health Check Path:** Khai báo `/health` trên Render Dashboard để hệ thống tự động kiểm tra liveness khi deploy.
+4. **WebSocket Heartbeat 2 chiều:** Duy trì ping/pong định kỳ (client ping mỗi 20s, server timeout 30s) để giữ các kết nối đang chơi không bị proxy ngắt.
+
+### Hệ quả (Consequences)
+- **Ưu điểm:**
+  - Giữ Web Service Render Free luôn ở trạng thái ấm ("gần như always-on") với chi phí $0.
+  - Loại bỏ hoàn toàn độ trễ cold-start khi bạn bè rủ nhau vào phòng chơi.
+  - Tiêu tốn cực ít tài nguyên băng thông và CPU của Render.
+- **Lưu ý thực tế:** Gói Render Free vẫn có thể restart định kỳ từ phía hạ tầng Render (khoảng 1 lần/ngày hoặc bảo trì). Vì phòng chơi được lưu in-memory (ADR-001), khi server restart người chơi chỉ cần tạo lại phòng mới, không ảnh hưởng dữ liệu cố định.
+
+

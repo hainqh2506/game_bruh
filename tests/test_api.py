@@ -16,6 +16,13 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
+def test_health_endpoint() -> None:
+    with _client() as client:
+        res = client.get("/health")
+        assert res.status_code == 200
+        assert res.json() == {"status": "ok"}
+
+
 def test_create_join_rest_no_answer() -> None:
     with _client() as client:
         created = client.post("/api/rooms", json={"name": "Hải"}).json()
@@ -231,3 +238,38 @@ def test_url_tamper_token_and_room_rejected() -> None:
         finally:
             HUB._rooms.pop(a["room_id"], None)
             HUB._rooms.pop(other["room_id"], None)
+
+
+def test_ws_reaction_broadcast_and_throttling() -> None:
+    with _client() as client:
+        a = client.post("/api/rooms", json={"name": "Hải"}).json()
+        b = client.post(f"/api/rooms/{a['room_id']}/join", json={"name": "Minh"}).json()
+        with (
+            client.websocket_connect(f"/ws?room={a['room_id']}&token={a['token']}") as ws_a,
+            client.websocket_connect(f"/ws?room={b['room_id']}&token={b['token']}") as ws_b,
+        ):
+            _drain_until(ws_a, "room")
+            _drain_until(ws_b, "room")
+
+            # A sends a valid reaction
+            ws_a.send_json({"type": "reaction", "emoji": "🔥"})
+            recv_a = _drain_until(ws_a, "reaction")
+            recv_b = _drain_until(ws_b, "reaction")
+            assert recv_a["emoji"] == "🔥"
+            assert recv_a["name"] == "Hải"
+            assert recv_b["emoji"] == "🔥"
+            assert recv_b["name"] == "Hải"
+
+            # Immediate second reaction from A should be throttled
+            ws_a.send_json({"type": "reaction", "emoji": "👏"})
+            ws_a.send_json({"type": "ping"})
+            next_msg = ws_a.receive_json()
+            assert next_msg["type"] == "pong"
+
+            # Invalid emoji should be ignored
+            ws_b.send_json({"type": "reaction", "emoji": "💩"})
+            ws_b.send_json({"type": "ping"})
+            next_b = ws_b.receive_json()
+            assert next_b["type"] == "pong"
+        HUB._rooms.pop(a["room_id"], None)
+

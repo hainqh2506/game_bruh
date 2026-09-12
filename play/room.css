@@ -35,6 +35,17 @@ body.party-play #game-settings {
 }
 
 @media (max-width: 767px) {
+  body.party-play,
+  body.party-play html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+  }
+  body.party-play .container {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-y: visible !important;
+  }
   body.party-play #room-panel {
     margin: 4px 0;
     padding: 6px 8px;
@@ -49,7 +60,7 @@ body.party-play #game-settings {
     font-size: 12px;
   }
   body.party-play #room-roster {
-    max-height: 88px;
+    max-height: 190px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -59,6 +70,33 @@ body.party-play #game-settings {
   }
   body.party-play #room-actions {
     margin-top: 6px;
+  }
+  .floating-item {
+    bottom: 215px !important;
+  }
+  .floating-emoji {
+    font-size: 34px !important;
+  }
+  .reaction-bar {
+    margin: 4px 0 !important;
+    padding: 2px 4px !important;
+  }
+  .reaction-btn {
+    height: 38px !important;
+    min-height: 38px !important;
+    font-size: 19px !important;
+  }
+  .mini-tile {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 3px !important;
+  }
+  .mini-row {
+    gap: 3px !important;
+  }
+  .mini-board-wrap {
+    padding: 6px 8px !important;
+    margin-top: 6px !important;
   }
   .room-setup-row {
     display: grid !important;
@@ -383,4 +421,247 @@ body.party-play #game-settings {
 .podium-item.bronze {
   border-left: 4px solid #cd7f32;
   color: #fed7aa;
+}
+
+/* Reaction Bar & Buttons */
+.reaction-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 24px;
+}
+.reaction-bar[hidden] {
+  display: none !important;
+}
+.reaction-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+.reaction-btn {
+  flex: 1 1 0;
+  max-width: 44px;
+  height: 38px;
+  min-height: 38px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid transparent !important;
+  border-radius: 19px !important;
+  font-size: 20px !important;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  box-shadow: none !important;
+  transition: transform 0.12s ease, background 0.12s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.reaction-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.15);
+}
+.reaction-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 204, 0, 0.3) !important;
+}
+
+/* Floating Reactions Overlay */
+#floating-reactions {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 9999;
+}
+.floating-item {
+  position: absolute;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  animation: floatUpAndFade 1.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+.floating-emoji {
+  font-size: 38px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+.floating-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffeb7a;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  white-space: nowrap;
+}
+
+/* Roster with Reactions & Spectate */
+#room-roster li.roster-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px 10px;
+}
+.roster-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+.player-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.roster-reaction-tag {
+  font-size: 16px;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.spectate-toggle-btn {
+  flex-shrink: 0;
+  background: rgba(255, 204, 0, 0.15) !important;
+  color: #ffeb7a !important;
+  border: 1px solid #d4af37 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  min-height: 28px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.spectate-toggle-btn:hover,
+.spectate-toggle-btn.active {
+  background: #fc0 !important;
+  color: #831810 !important;
+}
+
+/* Mini-board Spectating */
+.mini-board-wrap {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 8px;
+  animation: fadeIn 0.2s ease-out;
+}
+.mini-board-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffeb7a;
+  margin-bottom: 6px;
+}
+.mini-board-close {
+  background: transparent;
+  border: none;
+  color: #ddd;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.mini-board-close:hover {
+  color: #fff;
+}
+.mini-board-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.mini-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.mini-tile {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.mini-tile.tile-green {
+  background: #16a34a;
+  box-shadow: 0 0 3px rgba(22, 163, 74, 0.6);
+}
+.mini-tile.tile-yellow {
+  background: #eab308;
+  box-shadow: 0 0 3px rgba(234, 179, 8, 0.6);
+}
+.mini-tile.tile-blue {
+  background: #3b82f6;
+  box-shadow: 0 0 3px rgba(59, 130, 246, 0.6);
+}
+.mini-tile.tile-grey {
+  background: #374151;
+}
+.mini-tile.tile-empty {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+}
+.mini-tile.tile-space {
+  width: 8px;
+  background: transparent;
+}
+
+@keyframes floatUpAndFade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.6) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2) rotate(-5deg);
+  }
+  30% {
+    transform: translateY(-40px) scale(1) rotate(5deg);
+  }
+  75% {
+    opacity: 0.95;
+    transform: translateY(-160px) scale(0.95) rotate(-3deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-240px) scale(0.8) rotate(0deg);
+  }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

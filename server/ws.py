@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 from urllib.parse import parse_qs
@@ -10,7 +11,7 @@ from urllib.parse import parse_qs
 from fastapi import WebSocket, WebSocketDisconnect
 
 from game.protocol import Client, Server
-from game.room import HUB, Player, RoomSession
+from game.room import ALLOWED_REACTIONS, HUB, Player, RoomSession
 from game.ws import BUS
 
 Handler = Callable[[WebSocket, RoomSession, Player, dict[str, Any]], Awaitable[None]]
@@ -43,12 +44,32 @@ async def on_next_round(ws: WebSocket, room: RoomSession, player: Player, messag
     await BUS.broadcast(room.id, started_event)
 
 
+async def on_reaction(ws: WebSocket, room: RoomSession, player: Player, message: dict[str, Any]) -> None:
+    emoji = str(message.get("emoji") or "").strip()
+    if emoji not in ALLOWED_REACTIONS:
+        return
+    now = time.time()
+    if now - player.last_reaction_at < 0.3:
+        return
+    player.last_reaction_at = now
+    await BUS.broadcast(
+        room.id,
+        {
+            "type": Server.REACTION,
+            "player_id": player.id,
+            "name": player.name,
+            "emoji": emoji,
+        },
+    )
+
+
 HANDLERS: dict[str, Handler] = {
     Client.PING: on_ping,
     Client.START: on_start,
     Client.REMATCH: on_rematch,
     Client.GUESS: on_guess,
     Client.NEXT_ROUND: on_next_round,
+    Client.REACTION: on_reaction,
 }
 
 

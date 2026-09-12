@@ -48,6 +48,10 @@ def create_app(*, reload: bool, debug: bool, reload_state: Any) -> FastAPI:
 
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
 
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(PUBLIC_DIR / "index.html")

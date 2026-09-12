@@ -5,6 +5,15 @@ Tất cả các thay đổi kỹ thuật đáng chú ý của dự án sẽ đư
 ## 2026-09-13
 
 ### Added
+- Tính năng Thả cảm xúc nhanh (Floating Emoji Reactions):
+  - Thanh emoji 6 biểu cảm (`👏`, `🔥`, `🤣`, `💀`, `😱`, `❤️`) xuất hiện mượt mà khi đang trong trận đấu.
+  - Hiệu ứng floating emoji bay bổng từ dưới màn hình lên với chuyển động tự nhiên và tên người thả, tự biến mất sau 1.9s.
+  - Cơ chế rate-limit (0.3s) ở cả client và server chống spam, kèm huy hiệu emoji hiển thị tức thời bên cạnh tên người chơi trong danh sách phòng.
+  - Lệnh WebSocket hai chiều mới: `Client.REACTION` và `Server.REACTION`.
+- Tính năng Soi ma trận màu của đối thủ (Live Progress Mini-board Spectating):
+  - Nút "👁️ Soi" / "Đóng" bên cạnh mỗi đối thủ trong danh sách phòng khi đang thi đấu.
+  - Bảng ma trận 6 dòng x N ô hiển thị trực quan các màu (xanh lá, vàng, xanh dương, xám, khoảng trống) theo từng lượt đoán của đối thủ theo thời gian thực.
+  - Bảo mật tuyệt đối (100% cheat-proof): `Player.public()` chỉ trả về mảng màu `marks`, tuyệt đối giấu kín các chữ cái đoán (`guesses`).
 - Chế độ thi đấu phòng nhiều người Nhiều vòng (Multi-round Match):
   - Tùy chọn số câu (1, 3, 5, 10 câu - mặc định 5) và thời gian (Không giới hạn - mặc định, 120s, 180s, 300s) ngay khi tạo phòng.
   - Thang điểm theo số lượt đoán: lần 1 được 100đ, lần 2: 50đ, lần 3: 40đ, lần 4: 30đ, lần 5: 20đ, lần 6: 10đ, hỏng: 0đ.
@@ -12,7 +21,8 @@ Tất cả các thay đổi kỹ thuật đáng chú ý của dự án sẽ đư
   - Trạng thái `round_summary` (nghỉ 5s giữa 2 câu) và đếm ngược tự chuyển câu tiếp theo.
   - Màn hình vinh danh chung cuộc (Victory Podium Top 1 🥇, Top 2 🥈, Top 3 🥉).
   - Lệnh WebSocket mới: `Client.NEXT_ROUND` và `Server.ROUND_FINISHED`.
-- Ghi nhận quyết định kiến trúc ADR-005 vào `docs/DECISIONS.md`.
+- Bổ sung endpoint siêu nhẹ `GET /health` (`{"status": "ok"}`) phục vụ Health Check trên Render và cơ chế Keep-Alive chống sleep container thông qua UptimeRobot Free (chu kỳ 5 phút).
+- Ghi nhận quyết định kiến trúc ADR-005 và ADR-006 vào `docs/DECISIONS.md`.
 - Ghi nhận tài liệu thiết kế chi tiết tại `docs/changes/2026-09-13-multi-round-match-scoring.md`.
 
 ### Changed

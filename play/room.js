@@ -55,7 +55,11 @@
     total_rounds: 1,
     time_limit: 0,
     started_at: 0,
-    round_summary: null
+    round_summary: null,
+    spectating_id: null,
+    reactions: {},
+    word_length: 0,
+    space_index: -1
   };
 
   let roundTimer = null;
@@ -201,8 +205,60 @@
     }
   }
 
+  function spawnFloatingEmoji(emoji, name) {
+    let container = document.getElementById("floating-reactions");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "floating-reactions";
+      document.body.appendChild(container);
+    }
+    const item = document.createElement("div");
+    item.className = "floating-item";
+    const randomX = Math.floor(Math.random() * 60) + 20;
+    item.style.left = `${randomX}%`;
+    item.innerHTML = `
+      <span class="floating-emoji">${esc(emoji)}</span>
+      <span class="floating-name">${esc(name)}</span>
+    `;
+    container.appendChild(item);
+    item.addEventListener("animationend", () => {
+      if (item.parentNode) item.parentNode.removeChild(item);
+    });
+    setTimeout(() => {
+      if (item.parentNode) item.parentNode.removeChild(item);
+    }, 2200);
+  }
+
+  function onReaction(msg) {
+    const emoji = msg.emoji;
+    const name = msg.name || "Bạn";
+    const pid = msg.player_id;
+    spawnFloatingEmoji(emoji, name);
+    if (pid) {
+      if (!state.reactions) state.reactions = {};
+      if (state.reactions[pid] && state.reactions[pid].timer) {
+        clearTimeout(state.reactions[pid].timer);
+      }
+      const timer = setTimeout(() => {
+        if (state.reactions && state.reactions[pid]) {
+          delete state.reactions[pid];
+          renderRosterOnly();
+        }
+      }, 2500);
+      state.reactions[pid] = { emoji, timer };
+      renderRosterOnly();
+    }
+  }
+
+  function renderRosterOnly() {
+    const roster = document.getElementById("room-roster");
+    if (roster) roster.innerHTML = rosterHtml() || "<li>Chưa có ai</li>";
+  }
+
   function resolveStarted(data) {
     if (data.length == null) return;
+    if (data.length != null) state.word_length = data.length;
+    if (data.spaceIndex != null) state.space_index = data.spaceIndex;
     stashSolution(data.solution);
     startedResolve({
       room_id: data.room_id || state.room_id,
@@ -223,6 +279,8 @@
     state.total_rounds = data.total_rounds || state.total_rounds || 1;
     state.time_limit = data.time_limit != null ? data.time_limit : state.time_limit;
     state.started_at = data.started_at || state.started_at || 0;
+    if (data.length != null) state.word_length = data.length;
+    if (data.spaceIndex != null) state.space_index = data.spaceIndex;
     if (data.you) state.player_id = data.you.id;
     if (data.ranking) state.ranking = data.ranking;
     if (data.status === "playing" || data.status === "round_summary" || data.status === "finished") {
@@ -253,6 +311,9 @@
         state.started_at = msg.started_at || 0;
         state.players = msg.players || state.players;
         state.round_summary = null;
+        state.reactions = {};
+        if (msg.length != null) state.word_length = msg.length;
+        if (msg.spaceIndex != null) state.space_index = msg.spaceIndex;
         resolveStarted(msg);
         if (state.time_limit > 0) startTimer();
         if (document.querySelector(".row .tile")) {
@@ -279,6 +340,9 @@
         if (waiter) waiter.resolve(msg);
         break;
       }
+      case "reaction":
+        onReaction(msg);
+        break;
       case "error": {
         const waiter = guessWaiters.shift();
         if (waiter) waiter.reject(new Error(msg.message || "Lỗi"));
@@ -451,14 +515,58 @@
     return state.player_id && state.player_id === state.host_id;
   }
 
+  function miniBoardHtml(player) {
+    const marksList = player.marks || [];
+    const maxRows = 6;
+    const wordLen = state.word_length || (marksList[0] ? marksList[0].length : 5);
+    const spaceIdx = state.space_index != null ? state.space_index : -1;
+
+    let rowsHtml = "";
+    for (let r = 0; r < maxRows; r++) {
+      let rowTiles = "";
+      if (r < marksList.length) {
+        const rowMarks = marksList[r];
+        for (let c = 0; c < rowMarks.length; c++) {
+          const m = rowMarks[c];
+          if (m === null) {
+            rowTiles += `<span class="mini-tile tile-space"></span>`;
+          } else {
+            rowTiles += `<span class="mini-tile tile-${m}"></span>`;
+          }
+        }
+      } else {
+        for (let c = 0; c < wordLen; c++) {
+          if (c === spaceIdx) {
+            rowTiles += `<span class="mini-tile tile-space"></span>`;
+          } else {
+            rowTiles += `<span class="mini-tile tile-empty"></span>`;
+          }
+        }
+      }
+      rowsHtml += `<div class="mini-row">${rowTiles}</div>`;
+    }
+
+    return `
+      <div class="mini-board-wrap">
+        <div class="mini-board-title">
+          <span>Tiến độ: <strong>${esc(player.name)}</strong> (${player.attempts || 0}/6)</span>
+          <button type="button" class="mini-board-close" data-close-spectate="1" title="Đóng">✕</button>
+        </div>
+        <div class="mini-board-grid">${rowsHtml}</div>
+      </div>
+    `;
+  }
+
   function rosterHtml() {
     const ranks = {};
     (state.ranking || []).forEach((row) => {
       ranks[row.id] = row.rank;
     });
+    const inGame = state.status === "playing" || state.status === "round_summary" || state.status === "finished";
     return (state.players || [])
       .map((p) => {
-        const you = p.id === state.player_id ? " you" : "";
+        const isYou = p.id === state.player_id;
+        const you = isYou ? " you" : "";
         const host = p.id === state.host_id ? " · chủ" : "";
         const score = p.total_score != null ? p.total_score : 0;
         const roundScore = p.round_score ? ` (+${p.round_score})` : "";
@@ -472,10 +580,24 @@
           badge += " · mất máy";
           cls += " off";
         }
-        return `<li>
-          <span class="${you.trim()}">${esc(p.name)}${host}${you ? " (bạn)" : ""}</span>
-          <span class="score-badge">${score}đ${roundScore}</span>
-          <span class="${cls}">${badge}</span>
+        const reaction = state.reactions && state.reactions[p.id];
+        const reactionHtml = reaction ? `<span class="roster-reaction-tag">${reaction.emoji}</span>` : "";
+
+        const isSpectating = state.spectating_id === p.id;
+        const spectateBtn = (!isYou && inGame)
+          ? `<button type="button" class="spectate-toggle-btn ${isSpectating ? 'active' : ''}" data-spectate="${p.id}" title="Soi ma trận màu">${isSpectating ? 'Đóng' : '👁️ Soi'}</button>`
+          : "";
+
+        const miniBoard = (isSpectating && inGame) ? miniBoardHtml(p) : "";
+
+        return `<li class="roster-item ${isSpectating ? 'expanded' : ''}">
+          <div class="roster-main">
+            <span class="player-name ${you.trim()}">${esc(p.name)}${host}${isYou ? " (bạn)" : ""}${reactionHtml}</span>
+            <span class="score-badge">${score}đ${roundScore}</span>
+            <span class="${cls}">${badge}</span>
+            ${spectateBtn}
+          </div>
+          ${miniBoard}
         </li>`;
       })
       .join("");
@@ -590,6 +712,11 @@
         `Slot: ${L.rooms || 0}/${L.max_rooms} phòng · ` +
         `${L.party || 0}/${L.max_party} người · tối đa ${L.max_players}/phòng`;
     }
+    const reactionsBar = document.getElementById("room-reactions");
+    if (reactionsBar) {
+      const inGame = state.status === "playing" || state.status === "round_summary" || state.status === "finished";
+      reactionsBar.hidden = !inGame;
+    }
     syncPlayfield();
   }
 
@@ -646,6 +773,16 @@
         <p id="room-status"></p>
         <div id="room-summary-box" hidden></div>
         <ul id="room-roster"></ul>
+        <div id="room-reactions" class="reaction-bar" hidden>
+          <div class="reaction-buttons">
+            <button type="button" class="reaction-btn" data-emoji="👏" title="Vỗ tay">👏</button>
+            <button type="button" class="reaction-btn" data-emoji="🔥" title="Cháy quá">🔥</button>
+            <button type="button" class="reaction-btn" data-emoji="🤣" title="Cười rách mép">🤣</button>
+            <button type="button" class="reaction-btn" data-emoji="💀" title="Tạch / Cay">💀</button>
+            <button type="button" class="reaction-btn" data-emoji="😱" title="Kinh ngạc">😱</button>
+            <button type="button" class="reaction-btn" data-emoji="❤️" title="Thả tim">❤️</button>
+          </div>
+        </div>
         <div id="room-actions">
           <button type="button" id="room-start">Bắt đầu</button>
           <button type="button" id="room-next" hidden>Câu tiếp theo <span id="next-round-cd"></span></button>
@@ -678,6 +815,41 @@
     document.getElementById("room-next").onclick = () => send("next_round");
     document.getElementById("room-rematch").onclick = () => send("rematch");
     document.getElementById("room-leave").onclick = leaveRoom;
+
+    let lastReactionSentAt = 0;
+    const reactionsEl = document.getElementById("room-reactions");
+    if (reactionsEl) {
+      reactionsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".reaction-btn");
+        if (!btn) return;
+        const emoji = btn.getAttribute("data-emoji");
+        if (!emoji) return;
+        const now = Date.now();
+        if (now - lastReactionSentAt < 300) return;
+        lastReactionSentAt = now;
+        send("reaction", { emoji });
+      });
+    }
+
+    const rosterEl = document.getElementById("room-roster");
+    if (rosterEl) {
+      rosterEl.addEventListener("click", (e) => {
+        const spectateBtn = e.target.closest("[data-spectate]");
+        if (spectateBtn) {
+          const pid = spectateBtn.getAttribute("data-spectate");
+          state.spectating_id = state.spectating_id === pid ? null : pid;
+          render();
+          return;
+        }
+        const closeBtn = e.target.closest("[data-close-spectate]");
+        if (closeBtn) {
+          state.spectating_id = null;
+          render();
+          return;
+        }
+      });
+    }
+
     render();
   }
 
