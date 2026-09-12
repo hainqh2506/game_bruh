@@ -1,8 +1,7 @@
 name: Deploy Cloudflare Pages
 
+# Chỉ chạy khi bấm "Run workflow" trên GitHub — không deploy mỗi lần git push.
 on:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 
 jobs:

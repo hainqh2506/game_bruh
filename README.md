@@ -79,18 +79,20 @@ Trên **cùng link** `make dev` / tunnel (không phải Cloudflare Pages — Pag
 
 Phòng nằm **trong RAM** của process Python. GitHub Pages / Cloudflare Pages chỉ được **chơi đơn** (file tĩnh, không WebSocket). Party vẫn cần máy chạy `make dev` / `--tunnel`, hoặc VPS nhỏ — không host 24/7 trên GitHub Actions.
 
-Mặc định (đổi bằng biến môi trường):
+Copy [`.env.example`](.env.example) → `.env` rồi sửa (file `.env` không commit). `make dev` tự đọc `.env`.
 
 | Biến | Mặc định | Nghĩa |
 |---|---|---|
 | `DOANCHU_MAX_SOLO` | 40 | Slot chơi đơn đồng thời trên process này |
 | `DOANCHU_MAX_ROOMS` | 12 | Số phòng cùng lúc |
 | `DOANCHU_MAX_PLAYERS` | 8 | Người / phòng (2–8) |
-| `DOANCHU_MAX_PARTY` | 12×8 | Tổng người trong mọi phòng |
+| `DOANCHU_MAX_PARTY` | 40 | Tổng người trong mọi phòng |
 | `DOANCHU_ROOM_TTL` | 2700 | Xóa phòng idle (giây) |
 
 ```bash
-DOANCHU_MAX_ROOMS=6 DOANCHU_MAX_SOLO=20 make dev
+cp .env.example .env
+# sửa số trong .env
+make dev
 ```
 
 Lobby hiện `phòng đang dùng / trần`. Hết slot thì tạo phòng / chơi đơn báo lỗi, không nhận thêm.
@@ -168,7 +170,7 @@ Không tham số → in help. Không tự scrape site gốc.
 Cần login Cloudflare. Local chơi thì **không** cần.
 
 1. Secrets GitHub: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-2. Push `main` → workflow `.github/workflows/cloudflare-pages.yml`
+2. Actions → **Deploy Cloudflare Pages** → Run workflow (không chạy khi `git push`)
 3. Hoặc: `npx wrangler login` rồi `uv run python main.py --deploy`
 
 `DOANCHU_DEBUG=0` trên Pages (không mở tab Kho từ cho khách).
