@@ -101,3 +101,14 @@ def test_import_vdict(tmp_path, monkeypatch) -> None:
     again = db.import_vdict(words)
     assert again["raw"] == 2
     assert again["play"] == 2
+
+
+def test_drop_short_play(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "words.sqlite")
+    db.add_phrases(["học sinh", "a ha", "ô tô"], pool="raw", source="test")
+    db.add_phrases(["học sinh"], pool="play", source="test")
+    db.set_pools(["a ha", "ô tô"], "play")
+    out = db.drop_short_play()
+    assert set(out["removed"]) == {"a ha", "ô tô"}
+    assert db.all_phrases("play") == ["học sinh"]
+    assert "a ha" in db.all_phrases("raw")

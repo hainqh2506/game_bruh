@@ -96,6 +96,11 @@ def vulgar_terms() -> set[str]:
     return terms
 
 
+def fits_play(phrase: str) -> bool:
+    parts = unicodedata.normalize("NFC", phrase or "").strip().lower().split()
+    return len(parts) == 2 and all(len(part) >= PLAY_MIN_WORD_LEN for part in parts)
+
+
 def is_vulgar(phrase: str) -> bool:
     phrase = phrase.strip().lower()
     terms = vulgar_terms()
@@ -165,7 +170,7 @@ def import_vdict(path: Path | None = None) -> dict:
     play_rows: list[tuple] = []
     rejected_rows: list[tuple] = []
     seen: set[str] = set()
-    skipped = {"not_two": 0, "invalid": 0, "vulgar": 0, "rejected": 0}
+    skipped = {"not_two": 0, "invalid": 0, "vulgar": 0, "rejected": 0, "short": 0}
     for line in src.read_text(encoding="utf-8").splitlines():
         text = unicodedata.normalize("NFC", line).strip()
         if not text:
@@ -186,6 +191,9 @@ def import_vdict(path: Path | None = None) -> dict:
             continue
         if phrase in rejected:
             skipped["rejected"] += 1
+            continue
+        if not fits_play(phrase):
+            skipped["short"] += 1
             continue
         play_rows.append(_row_tuple(phrase, "vdict", "play"))
     conn = connect()
@@ -309,6 +317,29 @@ def filter_vulgar() -> dict:
     return {"rejected": moved, **counts()}
 
 
+def drop_short_play() -> dict:
+    """Remove Play answers that have a 1-letter word. Leave Raw intact."""
+    conn = connect()
+    rows = conn.execute(
+        """
+        SELECT phrase FROM phrases
+        WHERE pool = 'play' AND (length(word1) < ? OR length(word2) < ?)
+        """,
+        (PLAY_MIN_WORD_LEN, PLAY_MIN_WORD_LEN),
+    ).fetchall()
+    phrases = [row["phrase"] for row in rows]
+    conn.execute(
+        """
+        DELETE FROM phrases
+        WHERE pool = 'play' AND (length(word1) < ? OR length(word2) < ?)
+        """,
+        (PLAY_MIN_WORD_LEN, PLAY_MIN_WORD_LEN),
+    )
+    conn.commit()
+    conn.close()
+    return {"removed": phrases, "removed_n": len(phrases), **counts()}
+
+
 def seed_play_if_empty() -> dict:
     conn = connect()
     play_n = conn.execute("SELECT COUNT(*) FROM phrases WHERE pool = 'play'").fetchone()[0]
@@ -418,6 +449,9 @@ def add_phrases(phrases: list[str], pool: str = "play", source: str = "import") 
     conn = connect()
     try:
         for phrase in phrases:
+            if pool == "play" and not fits_play(phrase):
+                existed.append(phrase)
+                continue
             try:
                 conn.execute(
                     """
@@ -431,7 +465,7 @@ def add_phrases(phrases: list[str], pool: str = "play", source: str = "import") 
                         """
                         INSERT OR IGNORE INTO phrases
                           (phrase, word1, word2, source, letter_len, space_index, pool)
-                        VALUES (?, ?, ?, ?, ?, ?, 'raw')
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
                         _row_tuple(phrase, source, "raw"),
                     )
@@ -487,6 +521,8 @@ def discard_phrases(phrases: list[str], pool: str | None = None) -> dict:
 def add_phrase(phrase: str, source: str = "manual", pool: str = "play") -> bool:
     if pool not in POOLS:
         raise ValueError(f"pool must be one of {POOLS}")
+    if pool == "play" and not fits_play(phrase):
+        return False
     conn = connect()
     try:
         conn.execute(
@@ -501,7 +537,7 @@ def add_phrase(phrase: str, source: str = "manual", pool: str = "play") -> bool:
                 """
                 INSERT OR IGNORE INTO phrases
                   (phrase, word1, word2, source, letter_len, space_index, pool)
-                VALUES (?, ?, ?, ?, ?, ?, 'raw')
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 _row_tuple(phrase, source, "raw"),
             )
