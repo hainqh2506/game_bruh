@@ -221,6 +221,7 @@
     });
     if (play) play.hidden = name !== "play";
     if (debug) debug.hidden = name !== "debug";
+    document.body.classList.toggle("tab-debug", name === "debug");
   }
 
   function mount() {

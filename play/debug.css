@@ -66,13 +66,21 @@
 }
 #debug-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
 }
 #debug-table th, #debug-table td {
   text-align: left;
   padding: 6px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
+  background: #8a1f24;
+}
+#debug-table thead th {
+  background: #6e181c;
+}
+#debug-table tbody tr:nth-child(even) td {
+  background: #7c1c21;
 }
 #debug-pager {
   display: flex;
@@ -234,4 +242,35 @@
 #debug-table .acts button.danger {
   color: #fecaca;
   border-color: #ef4444;
+}
+
+@media (max-width: 767px) {
+  html:has(body.tab-debug),
+  body.tab-debug {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  body.tab-debug .container {
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.tab-debug .header,
+  body.tab-debug #app-tabs {
+    flex-shrink: 0;
+    background: var(--bg-deep-red, #a12629);
+    z-index: 2;
+  }
+  body.tab-debug #debug-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 4px 0 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: #8a1f24;
+    isolation: isolate;
+  }
 }
