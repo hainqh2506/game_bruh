@@ -26,7 +26,9 @@ async def api_rooms_join(room_id: str, request: Request) -> Any:
         return HUB.join(room_id, str(body.get("name") or ""), body.get("token"))
     except KeyError as exc:
         return json_error(str(exc), 404)
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        return json_error(str(exc), 403)
+    except ValueError as exc:
         return json_error(str(exc))
 
 

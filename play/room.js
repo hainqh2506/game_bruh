@@ -6,9 +6,25 @@
     name: "doanchu:playerName",
     player: "doanchu:playerId"
   };
+  function normalizeRoomCode(raw) {
+    const text = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return text.length === 4 ? text : "";
+  }
+
+  function pageUrl(roomId, party) {
+    if (roomId) return location.pathname + "?room=" + encodeURIComponent(roomId);
+    if (party) return location.pathname + "?mode=party";
+    return location.pathname;
+  }
+
   const params = new URLSearchParams(location.search);
-  const queryRoom = (params.get("room") || "").toUpperCase();
-  const partyMode = Boolean(queryRoom) || params.get("mode") === "party";
+  const queryRoom = normalizeRoomCode(params.get("room"));
+  const badRoom = params.has("room") && !queryRoom;
+  const partyMode = Boolean(queryRoom) || badRoom || params.get("mode") === "party";
+  const cleanUrl = pageUrl(queryRoom, partyMode);
+  if (location.pathname + location.search + location.hash !== cleanUrl) {
+    history.replaceState(null, "", cleanUrl);
+  }
   if (document.body) {
     document.body.classList.toggle("solo-play", !partyMode);
     document.body.classList.toggle("party-lobby", partyMode);
@@ -59,6 +75,16 @@
     return sessionStorage.getItem(STORE.token) || "";
   }
 
+  function storedRoom() {
+    return normalizeRoomCode(sessionStorage.getItem(STORE.room) || "");
+  }
+
+  function tokenFor(roomId) {
+    const room = normalizeRoomCode(roomId);
+    if (!room || storedRoom() !== room) return "";
+    return storedToken();
+  }
+
   async function api(path, body) {
     const res = await fetch(path, {
       method: "POST",
@@ -70,14 +96,24 @@
     return data;
   }
 
+  function stashSolution(sol) {
+    if (!sol) return;
+    window.__DOANCHU_ROOM_SOLUTION = sol;
+    if (typeof window.__DOANCHU_REVEAL === "function") {
+      window.__DOANCHU_REVEAL(sol);
+    }
+  }
+
   function resolveStarted(data) {
     if (data.length == null) return;
+    stashSolution(data.solution);
     startedResolve({
       room_id: data.room_id || state.room_id,
       length: data.length,
       spaceIndex: data.spaceIndex,
       started_at: data.started_at || 0,
-      board: data.board || { guesses: [], marksList: [] }
+      board: data.board || { guesses: [], marksList: [] },
+      solution: data.solution || ""
     });
   }
 
@@ -110,6 +146,7 @@
         render();
         break;
       case "guess_result": {
+        stashSolution(msg.solution);
         const waiter = guessWaiters.shift();
         if (waiter) waiter.resolve(msg);
         break;
@@ -132,6 +169,7 @@
         state.status = "finished";
         state.ranking = msg.ranking || [];
         if (msg.players) state.players = msg.players;
+        stashSolution(msg.solution);
         render();
         break;
       case "ping":
@@ -150,8 +188,8 @@
   }
 
   function connect() {
-    const roomId = state.room_id || queryRoom;
-    const token = state.token || storedToken();
+    const roomId = normalizeRoomCode(state.room_id || queryRoom);
+    const token = tokenFor(roomId) || (storedRoom() === roomId ? state.token : "");
     if (!roomId || !token) return;
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -192,9 +230,9 @@
   }
 
   function goToRoom(roomId) {
-    const next = new URL(location.href);
-    next.searchParams.set("room", roomId);
-    location.href = next.pathname + next.search;
+    const room = normalizeRoomCode(roomId);
+    if (!room) return;
+    location.href = pageUrl(room, false);
   }
 
   async function createRoom() {
@@ -211,10 +249,10 @@
   }
 
   async function joinRoom(code) {
-    const roomId = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+    const roomId = normalizeRoomCode(code);
     const name = (document.getElementById("room-name") || {}).value || state.name || "Khách";
     sessionStorage.setItem(STORE.name, name);
-    if (roomId.length !== 4) {
+    if (!roomId) {
       state.error = "Mã phòng 4 ký tự";
       render();
       return;
@@ -222,7 +260,7 @@
     try {
       const data = await api(`/api/rooms/${roomId}/join`, {
         name,
-        token: storedToken()
+        token: tokenFor(roomId)
       });
       saveAuth(data);
       if (queryRoom !== roomId) {
@@ -249,25 +287,18 @@
   }
 
   function leaveRoom() {
-    sessionStorage.removeItem(STORE.room);
-    sessionStorage.removeItem(STORE.token);
-    sessionStorage.removeItem(STORE.player);
     goToMode("party");
   }
 
   function goToMode(mode) {
-    const next = new URL(location.href);
     if (mode === "party") {
-      next.searchParams.delete("room");
-      next.searchParams.set("mode", "party");
-    } else {
-      sessionStorage.removeItem(STORE.room);
-      sessionStorage.removeItem(STORE.token);
-      sessionStorage.removeItem(STORE.player);
-      next.searchParams.delete("room");
-      next.searchParams.delete("mode");
+      location.href = pageUrl("", true);
+      return;
     }
-    location.href = next.pathname + next.search;
+    sessionStorage.removeItem(STORE.room);
+    sessionStorage.removeItem(STORE.token);
+    sessionStorage.removeItem(STORE.player);
+    location.href = pageUrl("", false);
   }
 
   function syncPlayfield() {
@@ -446,6 +477,12 @@
         ws.send(JSON.stringify({ type: "guess", guess }));
       });
     },
+    roomFinished() {
+      return state.status === "finished";
+    },
+    canRematch() {
+      return isHost() && state.status === "finished";
+    },
     rematch() {
       if (isHost() && state.status === "finished") send("rematch");
     }
@@ -460,11 +497,16 @@
         render();
       }
     } catch (e) {}
+    if (badRoom) {
+      state.error = "Mã phòng không hợp lệ";
+      render();
+      return;
+    }
     if (!queryRoom) return;
     try {
       const data = await api(`/api/rooms/${queryRoom}/join`, {
         name: state.name || "Khách",
-        token: storedToken()
+        token: tokenFor(queryRoom)
       });
       saveAuth(data);
       applyRoom(data);

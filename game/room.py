@@ -45,6 +45,18 @@ def _clean_name(name: str | None) -> str:
     return text[:20]
 
 
+def _clean_room_id(room_id: str | None) -> str:
+    raw = str(room_id or "").strip()
+    if any(ch in raw for ch in "./\\?&#"):
+        return ""
+    text = "".join(ch for ch in raw.upper() if ch.isalnum())
+    return text if len(text) == 4 else ""
+
+
+def _clean_token(token: str | None) -> str:
+    return str(token or "").strip()
+
+
 @dataclass
 class Player:
     id: str
@@ -88,6 +100,9 @@ class RoomSession:
         self.updated_at = _now()
 
     def _player_by_token(self, token: str) -> Player | None:
+        token = _clean_token(token)
+        if not token:
+            return None
         for player in self.players.values():
             if player.token == token:
                 return player
@@ -125,6 +140,12 @@ class RoomSession:
         if player:
             payload["you"] = player.public()
             payload["board"] = player.own_board()
+            if self.answer and (
+                player.solved
+                or player.attempts >= MAX_ATTEMPTS
+                or self.status == "finished"
+            ):
+                payload["solution"] = self.answer
         return payload
 
     def public_no_board(self) -> dict[str, Any]:
@@ -211,6 +232,8 @@ class RoomSession:
             "attempt": player.attempts,
             "max_guesses": MAX_ATTEMPTS,
         }
+        if won or player.attempts >= MAX_ATTEMPTS:
+            result["solution"] = self.answer
         peer = {
             "type": Server.PEER_UPDATE,
             "player": player.public(),
@@ -228,6 +251,7 @@ class RoomSession:
                 "type": Server.FINISHED,
                 "ranking": self.ranking(),
                 "players": self.roster(),
+                "solution": self.answer,
             }
         return {"to_player": result, "broadcast": peer, "finished": finished_event}
 
@@ -283,26 +307,34 @@ class RoomHub:
             self._rooms[room_id] = room
             return self._auth_payload(room, host)
 
+    def _room(self, room_id: str | None) -> RoomSession | None:
+        key = _clean_room_id(room_id)
+        if not key:
+            return None
+        return self._rooms.get(key)
+
     def join(self, room_id: str, name: str, token: str | None = None) -> dict[str, Any]:
         with self._lock:
-            room = self._rooms.get(room_id.upper())
+            room = self._room(room_id)
             if not room:
                 raise KeyError("Không có phòng này")
+            token = _clean_token(token)
             if token:
                 player = room._player_by_token(token)
-                if player:
-                    player.disconnected = False
-                    player.last_seen = _now()
-                    room.touch()
-                    if name:
-                        player.name = _clean_name(name)
-                    return self._auth_payload(room, player)
+                if not player:
+                    raise PermissionError("Token không hợp lệ")
+                player.disconnected = False
+                player.last_seen = _now()
+                room.touch()
+                if name:
+                    player.name = _clean_name(name)
+                return self._auth_payload(room, player)
+            if room.status != "lobby":
+                raise ValueError("Ván đang chạy. Chỉ vào lại được từ máy đã chơi.")
             if len(room.players) >= room.max_players:
                 raise ValueError(f"Phòng đầy ({room.max_players} người)")
             if self.party_count() >= self.limits.max_party:
                 raise ValueError(f"Máy chủ đông ({self.limits.max_party} người phòng). Thử lại sau.")
-            if room.status == "finished":
-                raise ValueError("Ván đã kết thúc")
             player = Player(id=_new_id(), name=_clean_name(name), token=secrets.token_urlsafe(16))
             room.players[player.id] = player
             room.touch()
@@ -310,11 +342,11 @@ class RoomHub:
 
     def get(self, room_id: str) -> RoomSession | None:
         with self._lock:
-            return self._rooms.get(room_id.upper())
+            return self._room(room_id)
 
     def player_for(self, room_id: str, token: str) -> tuple[RoomSession, Player]:
         with self._lock:
-            room = self._rooms.get(room_id.upper())
+            room = self._room(room_id)
             if not room:
                 raise KeyError("Không có phòng này")
             player = room._player_by_token(token)
@@ -326,7 +358,7 @@ class RoomHub:
 
     def mark_disconnected(self, room_id: str, token: str) -> dict[str, Any] | None:
         with self._lock:
-            room = self._rooms.get(room_id.upper())
+            room = self._room(room_id)
             if not room:
                 return None
             player = room._player_by_token(token)

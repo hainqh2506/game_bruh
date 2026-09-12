@@ -75,7 +75,11 @@
   const settings = loadSettings();
   const matched = poolFor(settings);
   const pageParams = new URLSearchParams(location.search);
-  const ROOM_MODE = pageParams.has("room") || pageParams.get("mode") === "party";
+  const roomFromUrl = String(pageParams.get("room") || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  const ROOM_MODE =
+    roomFromUrl.length === 4 || pageParams.get("mode") === "party";
   const answer = ROOM_MODE ? "" : pickAnswer(settings);
   window.__DOANCHU_ANSWER = ROOM_MODE ? "" : answer;
   window.__DOANCHU_SETTINGS = settings;
@@ -107,6 +111,7 @@
         }
         const info = await api.whenStarted();
         const date = "room-" + info.room_id + "-" + String(info.started_at || 0);
+        if (info.solution) window.__DOANCHU_ROOM_SOLUTION = info.solution;
         if (info.board && info.board.guesses && info.board.guesses.length) {
           try {
             localStorage.setItem("doanchu:v3:" + date, JSON.stringify({
@@ -117,7 +122,7 @@
               guesses: info.board.guesses,
               marksList: info.board.marksList,
               current: "",
-              solvedAnswer: ""
+              solvedAnswer: info.solution || ""
             }));
           } catch (e) {}
         }
@@ -148,6 +153,7 @@
         }
         try {
           const result = await api.submitGuess(guess, Number(body.attempt) || 1);
+          if (result.solution) window.__DOANCHU_ROOM_SOLUTION = result.solution;
           return json(result);
         } catch (err) {
           return json({ status: "error", message: err.message || "Từ không hợp lệ." });
@@ -160,7 +166,10 @@
       const won = guess === answer;
       const attempt = Number(body.attempt) || 1;
       const out = { status: "success", marks, won };
-      if (won || attempt >= 6) out.solution = answer;
+      if (won || attempt >= 6) {
+        out.solution = answer;
+        window.__DOANCHU_ROOM_SOLUTION = answer;
+      }
       return json(out);
     }
     if (url.includes("logResult.php")) {
@@ -318,17 +327,120 @@
     if (row && !document.getElementById("endgame-new")) {
       const b = document.createElement("button");
       b.id = "endgame-new";
-      b.textContent = "Ván mới";
+      b.textContent = ROOM_MODE ? "Đóng" : "Ván mới";
       b.style.cssText =
         "padding:12px 24px;background:#fc0;color:#831810;border:none;border-radius:10px;font-weight:800;font-size:18px;cursor:pointer;";
       b.onclick = () => {
-        if (ROOM_MODE && window.DOANCHU_ROOM && window.DOANCHU_ROOM.rematch) {
-          window.DOANCHU_ROOM.rematch();
+        if (ROOM_MODE) {
+          if (window.DOANCHU_ROOM && window.DOANCHU_ROOM.canRematch && window.DOANCHU_ROOM.canRematch()) {
+            window.DOANCHU_ROOM.rematch();
+            return;
+          }
+          if (close) close.click();
           return;
         }
         reload();
       };
       row.insertBefore(b, close);
     }
+    watchEndgame();
   });
+
+  function currentSolution() {
+    return window.__DOANCHU_ROOM_SOLUTION || window.__DOANCHU_ANSWER || "";
+  }
+
+  function endgameCopy(won, sol) {
+    const ans = sol ? " Đáp án: " + sol.toUpperCase() + "." : "";
+    if (!ROOM_MODE) {
+      return won
+        ? "Bạn đã đoán đúng!" + ans
+        : "Hết 6 lượt." + ans + " Bấm Ván mới để chơi tiếp.";
+    }
+    const done = window.DOANCHU_ROOM && window.DOANCHU_ROOM.roomFinished && window.DOANCHU_ROOM.roomFinished();
+    if (won) {
+      return done
+        ? "Bạn đã đoán đúng!" + ans + " Hết ván — chủ phòng có thể chơi lại."
+        : "Bạn đã đoán đúng!" + ans + " Người khác vẫn có thể đoán tiếp.";
+    }
+    return done
+      ? "Hết 6 lượt." + ans + " Hết ván — chủ phòng có thể chơi lại."
+      : "Hết 6 lượt." + ans + " Chờ mọi người xong ván.";
+  }
+
+  function paintBanner(sol) {
+    const el = document.getElementById("message");
+    if (!el || !sol) return;
+    const up = sol.toUpperCase();
+    const text = (el.textContent || "").toUpperCase();
+    if (el.classList.contains("reveal")) {
+      if (text.includes("HẾT LƯỢT") && !text.includes(up)) {
+        el.innerHTML = "Hết lượt. Cụm từ là:<br><span>" + up + "</span>";
+      } else if (text.includes("CHÍNH XÁC") && !text.includes(up)) {
+        el.innerHTML = "🎉 Chính xác!<br><span>" + up + "</span>";
+      }
+      return;
+    }
+    const rows = document.querySelectorAll("#rows .row");
+    if (!rows.length) return;
+    let filled = 0;
+    let won = false;
+    rows.forEach((row) => {
+      const tiles = [...row.querySelectorAll(".tile")];
+      if (!tiles.length || tiles.some((t) => !t.textContent.trim())) return;
+      filled += 1;
+      if (tiles.every((t) => t.classList.contains("t-green"))) won = true;
+    });
+    if (!(won || filled >= 6)) return;
+    el.classList.add("reveal");
+    el.innerHTML = won
+      ? "🎉 Chính xác!<br><span>" + up + "</span>"
+      : "Hết lượt. Cụm từ là:<br><span>" + up + "</span>";
+  }
+
+  function applyEndgame() {
+    const popup = document.getElementById("endgame-popup");
+    const msg = document.getElementById("endgame-message");
+    if (!popup || !msg || popup.style.display === "none") return;
+    const sol = currentSolution();
+    const title = document.querySelector("#endgame-title-wrap > div");
+    const won = Boolean(title && /chúc mừng/i.test(title.textContent || ""));
+    const next = endgameCopy(won, sol);
+    if (msg.textContent !== next) msg.textContent = next;
+    const newBtn = document.getElementById("endgame-new");
+    if (!newBtn) return;
+    if (ROOM_MODE) {
+      newBtn.textContent =
+        window.DOANCHU_ROOM && window.DOANCHU_ROOM.canRematch && window.DOANCHU_ROOM.canRematch()
+          ? "Chơi lại"
+          : "Đóng";
+    }
+  }
+
+  function watchEndgame() {
+    const popup = document.getElementById("endgame-popup");
+    const msg = document.getElementById("endgame-message");
+    const applySoon = () => setTimeout(() => {
+      paintBanner(currentSolution());
+      applyEndgame();
+    }, 0);
+    if (popup) {
+      new MutationObserver(applySoon).observe(popup, {
+        attributes: true,
+        attributeFilter: ["style"]
+      });
+    }
+    if (msg) {
+      new MutationObserver(applySoon).observe(msg, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+    window.__DOANCHU_REVEAL = (sol) => {
+      if (sol) window.__DOANCHU_ROOM_SOLUTION = sol;
+      applySoon();
+    };
+    applySoon();
+  }
 })();

@@ -130,7 +130,6 @@
   #game-settings[open] .settings-body {
     max-height: min(40dvh, 280px);
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding-right: 4px;
   }
