@@ -4,9 +4,9 @@ from typing import Any
 
 import db
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
-from game.phrases import normalize_phrase
+from game.phrases import normalize_phrase, parse_import_lines
 from server.httputil import json_error, read_json
 
 router = APIRouter()
@@ -16,6 +16,34 @@ def _require_debug(request: Request):
     if request.app.state.debug:
         return None
     return json_error("debug disabled", 403)
+
+
+def _as_stored_phrase(item: str) -> str:
+    text = str(item or "")
+    return normalize_phrase(text) or text.strip().lower()
+
+
+def _phrase_list(body: dict[str, Any], *, strict: bool = False) -> tuple[list[str], list[str]]:
+    if body.get("text"):
+        parsed = parse_import_lines(str(body.get("text") or ""))
+        return parsed["valid"], parsed["invalid"]
+    raw = body.get("phrases")
+    items = raw if isinstance(raw, list) else [body.get("phrase")]
+    valid: list[str] = []
+    invalid: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        stored = _as_stored_phrase(str(item or ""))
+        if not stored:
+            continue
+        if strict and not normalize_phrase(stored):
+            invalid.append(str(item).strip())
+            continue
+        if stored in seen:
+            continue
+        seen.add(stored)
+        valid.append(stored)
+    return valid, invalid
 
 
 @router.get("/api/phrases")
@@ -32,19 +60,47 @@ def api_phrases_get(
     return db.search(q, page, limit, pool)
 
 
+@router.get("/api/phrases/export")
+def api_phrases_export(request: Request, pool: str = "play") -> Any:
+    blocked = _require_debug(request)
+    if blocked:
+        return blocked
+    if pool not in db.POOLS:
+        return json_error("pool không hợp lệ")
+    text = "\n".join(db.all_phrases(pool))
+    if text:
+        text += "\n"
+    filename = f"doanchu-{pool}.txt"
+    return PlainTextResponse(
+        text,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/api/phrases")
 async def api_phrases_post(request: Request) -> Any:
     blocked = _require_debug(request)
     if blocked:
         return blocked
     body = await read_json(request)
-    phrase = normalize_phrase(str(body.get("phrase") or ""))
     pool = str(body.get("pool") or "play")
-    if not phrase:
+    if pool not in db.POOLS:
+        return json_error("pool không hợp lệ")
+    valid, invalid = _phrase_list(body, strict=True)
+    if not valid and not invalid:
         return json_error("Cần cụm đúng 2 từ tiếng Việt")
-    created = db.add_phrase(phrase, source="manual", pool=pool)
+    source = "import" if body.get("text") or isinstance(body.get("phrases"), list) else "manual"
+    result = db.add_phrases(valid, pool=pool, source=source)
     db.export_artifacts()
-    return {"ok": True, "created": created, "phrase": phrase, "counts": db.counts()}
+    return {
+        "ok": True,
+        "created": bool(result["added"]),
+        "added": result["added"],
+        "existed": result["existed"],
+        "invalid": invalid,
+        "counts": result["counts"],
+    }
 
 
 @router.patch("/api/phrases")
@@ -53,15 +109,21 @@ async def api_phrases_patch(request: Request) -> Any:
     if blocked:
         return blocked
     body = await read_json(request)
-    phrase = normalize_phrase(str(body.get("phrase") or "")) or str(body.get("phrase") or "").strip().lower()
     pool = str(body.get("pool") or "")
-    if not phrase or pool not in db.POOLS:
+    valid, _invalid = _phrase_list(body)
+    if not valid or pool not in db.POOLS:
         return json_error("phrase/pool không hợp lệ")
-    ok = db.set_pool(phrase, pool)
+    result = db.set_pools(valid, pool)
     db.export_artifacts()
     return JSONResponse(
-        {"ok": ok, "phrase": phrase, "pool": pool, "counts": db.counts()},
-        status_code=200 if ok else 404,
+        {
+            "ok": bool(result["moved"]),
+            "moved": result["moved"],
+            "missing": result["missing"],
+            "pool": pool,
+            "counts": result["counts"],
+        },
+        status_code=200 if result["moved"] else 404,
     )
 
 
@@ -71,8 +133,20 @@ async def api_phrases_delete(request: Request) -> Any:
     if blocked:
         return blocked
     body = await read_json(request)
-    phrase = normalize_phrase(str(body.get("phrase") or "")) or str(body.get("phrase") or "").strip().lower()
     pool = body.get("pool")
-    ok = db.remove_phrase(phrase, pool if pool in db.POOLS else None)
+    valid, _invalid = _phrase_list(body)
+    if not valid:
+        return json_error("phrase không hợp lệ")
+    result = db.discard_phrases(valid, pool if pool in db.POOLS else None)
     db.export_artifacts()
-    return JSONResponse({"ok": ok, "counts": db.counts()}, status_code=200 if ok else 404)
+    ok = bool(result["discarded"] or result["removed"])
+    return JSONResponse(
+        {
+            "ok": ok,
+            "soft": result["soft"],
+            "discarded": result["discarded"],
+            "removed": result["removed"],
+            "counts": result["counts"],
+        },
+        status_code=200 if ok else 404,
+    )

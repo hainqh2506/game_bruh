@@ -300,6 +300,80 @@ def curate_play() -> dict:
     return {"curated": True, "quality": len(payload), **stats}
 
 
+def add_phrases(phrases: list[str], pool: str = "play", source: str = "import") -> dict:
+    if pool not in POOLS:
+        raise ValueError(f"pool must be one of {POOLS}")
+    added: list[str] = []
+    existed: list[str] = []
+    conn = connect()
+    try:
+        for phrase in phrases:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO phrases (phrase, word1, word2, source, letter_len, space_index, pool)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    _row_tuple(phrase, source, pool),
+                )
+                if pool == "play":
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO phrases
+                          (phrase, word1, word2, source, letter_len, space_index, pool)
+                        VALUES (?, ?, ?, ?, ?, ?, 'raw')
+                        """,
+                        _row_tuple(phrase, source, "raw"),
+                    )
+                added.append(phrase)
+            except sqlite3.IntegrityError:
+                existed.append(phrase)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"added": added, "existed": existed, "counts": counts()}
+
+
+def set_pools(phrases: list[str], pool: str) -> dict:
+    moved: list[str] = []
+    missing: list[str] = []
+    for phrase in phrases:
+        if set_pool(phrase, pool):
+            moved.append(phrase)
+        else:
+            missing.append(phrase)
+    return {"moved": moved, "missing": missing, "counts": counts()}
+
+
+def remove_phrases(phrases: list[str], pool: str | None = None) -> dict:
+    removed: list[str] = []
+    for phrase in phrases:
+        if remove_phrase(phrase, pool):
+            removed.append(phrase)
+    return {"removed": removed, "counts": counts()}
+
+
+def discard_phrases(phrases: list[str], pool: str | None = None) -> dict:
+    """Play/Raw → Đã loại (lấy lại được). Rejected → xóa hẳn."""
+    if pool == "rejected":
+        result = remove_phrases(phrases, "rejected")
+        return {
+            "soft": False,
+            "discarded": [],
+            "removed": result["removed"],
+            "counts": result["counts"],
+        }
+    moved = set_pools(phrases, "rejected")
+    if pool == "raw":
+        remove_phrases(moved["moved"], "raw")
+    return {
+        "soft": True,
+        "discarded": moved["moved"],
+        "removed": [],
+        "counts": counts(),
+    }
+
+
 def add_phrase(phrase: str, source: str = "manual", pool: str = "play") -> bool:
     if pool not in POOLS:
         raise ValueError(f"pool must be one of {POOLS}")

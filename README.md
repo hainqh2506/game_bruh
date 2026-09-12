@@ -113,7 +113,7 @@ Ba pool trong `data/words.sqlite` (xem [data/README.md](data/README.md)):
 | **Raw** | Dump gốc (~59k) |
 | **Đã loại** | Tục / bỏ tay |
 
-Tab **Kho từ** (khi `DOANCHU_DEBUG=1`, mặc định với `make dev`): tìm, thêm, xoá, chuyển pool.
+Tab **Kho từ** (khi `DOANCHU_DEBUG=1`, mặc định với `make dev`): tìm, thêm từng cụm, chọn hàng loạt, nhập/xuất file `.txt`. Raw = chờ duyệt; Play = đáp án. **Loại** đưa vào Đã loại (lấy lại được); chỉ **Xóa hẳn** ở tab đó mới mất.
 
 ```bash
 uv run python main.py --add-phrase "học sinh" --pool play

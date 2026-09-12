@@ -35,7 +35,7 @@ curate:
 
 test:
 	node --test tests/marks.test.js
-	$(UV) pytest tests/test_engine.py tests/test_room.py tests/test_api.py
+	$(UV) pytest tests/test_engine.py tests/test_room.py tests/test_api.py tests/test_phrases.py
 
 link:
 	@cat run/LINK.txt 2>/dev/null || echo "Chưa có tunnel. Chạy: make dev"
