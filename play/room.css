@@ -49,8 +49,9 @@ body.party-play #game-settings {
     font-size: 12px;
   }
   body.party-play #room-roster {
-    max-height: 72px;
+    max-height: 88px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   body.party-play #room-roster li {
     padding: 4px 8px;
@@ -58,6 +59,95 @@ body.party-play #game-settings {
   }
   body.party-play #room-actions {
     margin-top: 6px;
+  }
+  .room-setup-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    gap: 8px 10px;
+    width: 100%;
+    align-items: center;
+  }
+  .room-setup-row .room-select {
+    width: 100%;
+    min-height: 42px;
+    font-size: 16px !important;
+    box-sizing: border-box;
+  }
+  .room-row input {
+    font-size: 16px !important;
+    min-height: 42px;
+    box-sizing: border-box;
+  }
+  .room-row button,
+  #room-actions button {
+    min-height: 42px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .room-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  #room-code-out {
+    font-size: 18px !important;
+  }
+  #room-copy {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    min-height: 36px !important;
+  }
+  .round-badge {
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+  }
+  .room-timer {
+    font-size: 13px !important;
+  }
+  .summary-card {
+    padding: 8px 10px !important;
+  }
+  .summary-title {
+    font-size: 14px !important;
+  }
+  .summary-answer {
+    font-size: 13px !important;
+  }
+  .podium-item {
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+  }
+
+  /* Mobile Endgame Modal Optimization */
+  #endgame-popup {
+    padding: calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom)) 10px !important;
+  }
+  #endgame-modal {
+    border-width: 4px !important;
+    border-radius: 12px !important;
+  }
+  #endgame-modal > div {
+    margin: 8px !important;
+    padding: 14px 10px !important;
+  }
+  #endgame-title-wrap > div:first-child {
+    font-size: 20px !important;
+  }
+  #endgame-title-wrap > div:last-child {
+    font-size: 28px !important;
+    margin: 2px 0 6px !important;
+  }
+  #endgame-preview {
+    max-height: 150px !important;
+    width: auto !important;
+  }
+  #endgame-share,
+  #endgame-download,
+  #endgame-close,
+  #endgame-new {
+    min-height: 44px !important;
+    touch-action: manipulation;
   }
 }
 
