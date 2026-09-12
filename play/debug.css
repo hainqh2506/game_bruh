@@ -3,6 +3,7 @@
   gap: 8px;
   justify-content: center;
   margin: 0 0 10px;
+  flex-shrink: 0;
 }
 #app-tabs[hidden],
 #debug-root[hidden] {
@@ -20,6 +21,17 @@
 .tab.on {
   background: #fc0;
   color: #831810;
+}
+@media (max-width: 767px) {
+  #app-tabs {
+    gap: 6px;
+    margin: 0 0 4px;
+  }
+  #app-tabs .tab {
+    padding: 5px 10px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
 }
 #debug-root {
   background: rgba(0, 0, 0, .18);

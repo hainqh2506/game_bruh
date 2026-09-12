@@ -30,6 +30,37 @@ body.party-lobby #new-game {
   display: none !important;
 }
 
+body.party-play #game-settings {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  body.party-play #room-panel {
+    margin: 4px 0;
+    padding: 6px 8px;
+  }
+  body.party-play #room-panel h2,
+  body.party-play #room-caps,
+  body.party-play #room-lobby {
+    display: none;
+  }
+  body.party-play #room-status {
+    margin: 0 0 4px;
+    font-size: 12px;
+  }
+  body.party-play #room-roster {
+    max-height: 72px;
+    overflow-y: auto;
+  }
+  body.party-play #room-roster li {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+  body.party-play #room-actions {
+    margin-top: 6px;
+  }
+}
+
 #room-panel {
   background: rgba(0, 0, 0, .18);
   border: 1px solid #d4af37;

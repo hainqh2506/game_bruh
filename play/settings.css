@@ -138,4 +138,79 @@
     overflow-x: hidden;
     overflow-y: auto;
   }
+
+  html body .container > .header {
+    margin-bottom: 2px;
+  }
+  html body .container > .header .logo {
+    font-size: 18px !important;
+    line-height: 1.2;
+  }
+  html body .container > .lenhint,
+  html body #play-root > .lenhint {
+    margin: 0 2px 4px;
+    font-size: 11px;
+  }
+  html body #contact-info {
+    display: none;
+  }
+  html body .container > .howto-bar,
+  html body #play-root > .howto-bar {
+    margin: 4px 0;
+    gap: 6px;
+  }
+  html body .howto-bar details {
+    padding: 6px 8px;
+    margin: 0;
+  }
+  #mode-bar {
+    gap: 6px;
+    margin: 4px 0;
+  }
+  #mode-bar button {
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  #game-settings {
+    margin: 4px 0;
+    padding: 6px 10px;
+  }
+  #game-settings summary {
+    font-size: 13px;
+  }
+}
+
+/* Restore original 100dvh stack after #play-root wraps the board. */
+@media (max-width: 767px) and (min-height: 750px) {
+  html body .container > #play-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  html body #play-root > .lenhint,
+  html body #play-root > .howto-bar,
+  html body #play-root > #mode-bar,
+  html body #play-root > #game-settings,
+  html body #play-root > #room-panel,
+  html body #play-root > #solo-full,
+  html body #play-root > #loader,
+  html body #play-root > #desktop-rules,
+  html body #play-root > #message {
+    flex-shrink: 0;
+  }
+  html body #play-root > #rows {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+  }
+  html body #play-root > .kb {
+    flex-shrink: 0;
+    margin-top: auto !important;
+    margin-bottom: 4px !important;
+  }
 }
