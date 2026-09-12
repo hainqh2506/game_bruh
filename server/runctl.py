@@ -73,18 +73,24 @@ def stop_run(extra_ports: tuple[int, ...] = ()) -> None:
     for pid in pids:
         _kill_pid(pid)
     for port in ports:
+        try:
+            subprocess.run(
+                ["fuser", "-k", f"{port}/tcp"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            pass
+    try:
         subprocess.run(
-            ["fuser", "-k", f"{port}/tcp"],
+            ["pkill", "-f", "cloudflared tunnel --no-autoupdate --url http://127.0.0.1:"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
         )
-    subprocess.run(
-        ["pkill", "-f", "cloudflared tunnel --no-autoupdate --url http://127.0.0.1:"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
+    except OSError:
+        pass
     if STATUS_PATH.exists() or LINK_PATH.exists():
         write_run_status(public_url="", python_pid="", tunnel_pid="", stopped=True)
     print("Đã tắt server/tunnel cũ.", flush=True)
