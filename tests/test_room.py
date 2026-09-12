@@ -422,3 +422,25 @@ def test_reconnect_disconnected_player_without_token() -> None:
     assert room.players[b["player_id"]].disconnected is False
 
 
+def test_player_public_marks_without_guesses() -> None:
+    hub, a, b = _room_two()
+    room, host = hub.player_for(a["room_id"], a["token"])
+    room.start(host)
+
+    # Host submits a guess
+    wrong = _wrong(room.answer)
+    room.submit_guess(host, wrong)
+
+    host_pub = host.public()
+    assert "marks" in host_pub
+    assert len(host_pub["marks"]) == 1
+    assert "guesses" not in host_pub
+
+    # Verify roster exposes marks but never guesses
+    roster = room.roster()
+    p1 = next(p for p in roster if p["id"] == host.id)
+    assert len(p1["marks"]) == 1
+    assert "guesses" not in p1
+
+
+

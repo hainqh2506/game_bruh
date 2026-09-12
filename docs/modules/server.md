@@ -25,6 +25,7 @@ Chịu trách nhiệm khởi tạo ứng dụng web ASGI (FastAPI), phục vụ 
 
 | Method | Path | Quyền | Mục đích |
 | :--- | :--- | :--- | :--- |
+| `GET` | `/health` | Public | Health check & UptimeRobot keep-alive (trả `{ "status": "ok" }`) |
 | `GET` | `/` | Public | Phục vụ file `index.html` của game |
 | `GET` | `/api/config` | Public | Lấy trạng thái server, giới hạn phòng, chế độ debug |
 | `POST` | `/api/rooms` | Public | Tạo phòng mới |

@@ -23,7 +23,9 @@ Xử lý kết nối hai chiều thời gian thực (Full-duplex Real-time Commu
 | `ping` | `{ "type": "ping" }` | Giữ kết nối (heartbeat mỗi 20s) |
 | `start` | `{ "type": "start" }` | Chủ phòng bấm bắt đầu ván đấu |
 | `guess` | `{ "type": "guess", "guess": "học sinh" }` | Người chơi gửi từ đoán |
-| `rematch` | `{ "type": "rematch" }` | Chủ phòng yêu cầu chơi lại ván mới |
+| `next_round` | `{ "type": "next_round" }` | Chủ phòng bấm chuyển sang câu tiếp theo |
+| `rematch` | `{ "type": "rematch" }` | Chủ phòng yêu cầu chơi lại ván/trận mới |
+| `reaction` | `{ "type": "reaction", "emoji": "🔥" }` | Thả cảm xúc nhanh (rate-limited 0.3s) |
 
 ### Server to Client (`Server.*`)
 | Lệnh | Payload chính | Ý nghĩa |
@@ -31,9 +33,11 @@ Xử lý kết nối hai chiều thời gian thực (Full-duplex Real-time Commu
 | `room` | `{ "type": "room", "status": ..., "players": ..., "board": ... }` | Trả về trạng thái đầy đủ khi mới vào phòng |
 | `started` | `{ "type": "started", "length": ..., "spaceIndex": ... }` | Thông báo ván chơi bắt đầu |
 | `guess_result` | `{ "type": "guess_result", "marks": [...], "won": bool }` | Trả kết quả tô màu cho người vừa đoán |
-| `peer_update` | `{ "type": "peer_update", "players": [...] }` | Cập nhật số lượt đoán của bạn chơi |
+| `peer_update` | `{ "type": "peer_update", "players": [...] }` | Cập nhật số lượt đoán & ma trận màu (marks) an toàn của bạn chơi |
 | `peer_solved` | `{ "type": "peer_solved", "player": ..., "rank": int }` | Thông báo có bạn chơi vừa đoán đúng |
-| `finished` | `{ "type": "finished", "ranking": [...], "solution": str }` | Kết thúc ván, công bố bảng xếp hạng & đáp án |
+| `round_finished` | `{ "type": "round_finished", "round": ..., "solution": ... }` | Kết thúc câu hiện tại trong chuỗi nhiều câu |
+| `finished` | `{ "type": "finished", "ranking": [...], "solution": str }` | Kết thúc ván/trận, công bố bảng xếp hạng & đáp án |
+| `reaction` | `{ "type": "reaction", "player_id": ..., "name": ..., "emoji": ... }` | Broadcast biểu cảm nhanh nổi trên màn hình |
 | `pong` | `{ "type": "pong" }` | Phản hồi lệnh ping |
 | `error` | `{ "type": "error", "message": str }` | Báo lỗi thao tác cho client |
 

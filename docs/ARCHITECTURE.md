@@ -142,6 +142,11 @@ sequenceDiagram
 - **Database:** SQLite 3 (`data/words.sqlite`), truy cập trực tiếp qua thư viện chuẩn `sqlite3`, không dùng ORM cồng kềnh.
 - **Hosting Production:** Render Web Service (Free Tier) chạy Linux container.
 - **Ephemeral Filesystem Constraint:** Trên Render Free, ổ đĩa là tạm thời. Dữ liệu phòng chơi nằm trong RAM (sẽ mất khi process restart). Dữ liệu SQLite được đóng gói cùng Git repository.
+- **Cơ chế Keep-Alive (Always-On Workaround):**
+  - Render Free sleep sau 15 phút không có inbound traffic.
+  - Tích hợp endpoint siêu nhẹ `/health` (`{"status": "ok"}`) phản hồi < 2ms.
+  - Sử dụng UptimeRobot Free monitor gửi HTTP GET mỗi **5 phút** tới `https://game-bruh.onrender.com/health`.
+  - Kết hợp heartbeat WebSocket 2 chiều (client ping mỗi 20s, server timeout 30s) giữ ấm service 24/7 với chi phí $0.
 
 ---
 
@@ -151,7 +156,7 @@ sequenceDiagram
    - Hiện tại toàn bộ phòng và người chơi nằm trong RAM của 1 process duy nhất (`HUB`).
    - *Hệ quả:* Không thể chạy nhiều worker (`WEB_CONCURRENCY > 1`) hoặc scale out nhiều replica nếu không có tầng phân tán (Redis Pub/Sub hoặc SQLite shared state).
    - *Hiện trạng:* Phù hợp hoàn hảo cho nhu cầu chơi với bạn bè và hosting gói Free.
-2. **Thiếu cơ chế Nhiều vòng (Multi-round Match) & Bảng điểm tích lũy:**
-   - Phòng chơi hiện tại chỉ kết thúc sau 1 câu đố duy nhất, người chơi phải đợi nhau hoặc chủ phòng phải bấm Rematch. Cần mở rộng sang cơ chế Series (3-5-10 câu) tính tổng điểm.
+2. **Cơ chế Nhiều vòng (Multi-round Match) & Bảng điểm tích lũy:**
+   - *Đã hoàn thành:* Hỗ trợ tùy chọn 1, 3, 5, 10 câu, thời gian 120s - 300s, thang điểm theo lượt đoán (100đ - 10đ), tie-breaker theo thời gian và bục vinh danh chung cuộc.
 3. **Console Encoding trên Windows CLI:**
    - Chạy `main.py --help` trên cmd/powershell cp1252 cần `PYTHONUTF8=1` để không bị lỗi ký tự Unicode tiếng Việt trong docstring.

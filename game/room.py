@@ -83,6 +83,7 @@ class Player:
     round_score: int = 0
     total_time: float = 0.0
     round_time: float = 0.0
+    last_reaction_at: float = 0.0
 
     def public(self) -> dict[str, Any]:
         return {
@@ -95,10 +96,14 @@ class Player:
             "round_score": self.round_score,
             "total_time": round(self.total_time, 2),
             "round_time": round(self.round_time, 2),
+            "marks": [list(m) for m in self.marks_list],
         }
 
     def own_board(self) -> dict[str, Any]:
         return {"guesses": list(self.guesses), "marksList": [list(m) for m in self.marks_list]}
+
+
+ALLOWED_REACTIONS: set[str] = {"👏", "🔥", "🤣", "💀", "😱", "❤️"}
 
 
 @dataclass
