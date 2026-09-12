@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 
@@ -353,6 +354,11 @@ def main() -> None:
     )
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
+        "--host",
+        default=os.environ.get("HOST", "0.0.0.0"),
+        help="Host interface to bind (default: 0.0.0.0 or env HOST)",
+    )
+    parser.add_argument(
         "--stop",
         action="store_true",
         help="Stop the running local server / Quick Tunnel",
@@ -433,7 +439,7 @@ def main() -> None:
         return
     if args.serve or args.tunnel:
         stop_run(extra_ports=(args.port,))
-        serve_play(args.port, tunnel=args.tunnel, reload=args.reload)
+        serve_play(args.port, tunnel=args.tunnel, reload=args.reload, host=args.host)
         return
     if args.build_play:
         dest = build_play()

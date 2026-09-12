@@ -66,7 +66,12 @@ def watch_play_files(state: ReloadState) -> None:
             print(f"Reload failed: {exc}", flush=True)
 
 
-def serve_play(port: int = DEFAULT_PORT, tunnel: bool = False, reload: bool = True) -> None:
+def serve_play(
+    port: int = DEFAULT_PORT,
+    tunnel: bool = False,
+    reload: bool = True,
+    host: str = "0.0.0.0",
+) -> None:
     build_play(reload=reload)
     on = debug_enabled()
     state = ReloadState()
@@ -104,7 +109,8 @@ def serve_play(port: int = DEFAULT_PORT, tunnel: bool = False, reload: bool = Tr
                 print(f"  Đã ghi: {LINK_PATH}", flush=True)
                 print("========================================\n", flush=True)
 
-    url = f"http://127.0.0.1:{port}/"
+    display_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+    url = f"http://{display_host}:{port}/"
     write_run_status(
         local_url=url,
         public_url="",
@@ -140,7 +146,7 @@ def serve_play(port: int = DEFAULT_PORT, tunnel: bool = False, reload: bool = Tr
         except Exception:
             pass
     try:
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+        uvicorn.run(app, host=host, port=port, log_level="info")
     except OSError as exc:
         if getattr(exc, "errno", None) == 98:
             raise SystemExit(
