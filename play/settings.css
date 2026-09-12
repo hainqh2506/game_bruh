@@ -25,6 +25,12 @@
   padding: 0;
 }
 
+#endgame-modal a[href^="mailto:"],
+#endgame-modal div:has(> a[href^="mailto:"]),
+#endgame-modal div:has(> div > a[href^="mailto:"]) {
+  display: none !important;
+}
+
 #game-settings {
   background: rgba(0, 0, 0, .18);
   border: 1px solid #d4af37;

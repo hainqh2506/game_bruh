@@ -377,10 +377,10 @@
     );
   }
 
-  function syncVdictLink(sol, won) {
+  function syncVdictLink(sol) {
     const msg = document.getElementById("endgame-message");
     let a = document.getElementById("endgame-vdict");
-    const url = won ? vdictUrl(sol) : "";
+    const url = vdictUrl(sol);
     if (!url) {
       if (a) a.hidden = true;
       return;
@@ -457,7 +457,14 @@
     const won = Boolean(title && /chúc mừng/i.test(title.textContent || ""));
     const next = endgameCopy(won, sol);
     if (msg.textContent !== next) msg.textContent = next;
-    syncVdictLink(sol, won);
+    syncVdictLink(sol);
+
+    const contactLinks = popup.querySelectorAll('a[href^="mailto:"]');
+    contactLinks.forEach((link) => {
+      const container = link.closest("div[style*='text-align:center']") || link.parentElement;
+      if (container) container.style.display = "none";
+    });
+
     const newBtn = document.getElementById("endgame-new");
     if (!newBtn) return;
     if (ROOM_MODE) {
