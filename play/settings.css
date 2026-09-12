@@ -1,3 +1,30 @@
+.vdict-link,
+#endgame-vdict,
+#message.reveal a.vdict-link {
+  color: #ffeb7a;
+  font-weight: 700;
+  text-decoration: underline;
+  -webkit-tap-highlight-color: rgba(255, 235, 122, .25);
+}
+#endgame-vdict {
+  display: block;
+  text-align: center;
+  margin: 0 auto 12px;
+  padding: 10px 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 16px;
+  line-height: 1.2;
+}
+#endgame-vdict[hidden] {
+  display: none;
+}
+#message.reveal a.vdict-link {
+  color: inherit;
+  display: inline;
+  padding: 0;
+}
+
 #game-settings {
   background: rgba(0, 0, 0, .18);
   border: 1px solid #d4af37;
@@ -126,6 +153,16 @@
 }
 
 @media (max-width: 767px) {
+  #endgame-vdict {
+    margin: 0 auto 8px;
+    padding: 12px 8px;
+    font-size: 15px;
+  }
+  #endgame-message {
+    margin-bottom: 8px !important;
+    font-size: 17px !important;
+  }
+
   .howto-bar details[open] > div,
   #game-settings[open] .settings-body {
     max-height: min(40dvh, 280px);

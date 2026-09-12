@@ -350,6 +350,47 @@
     return window.__DOANCHU_ROOM_SOLUTION || window.__DOANCHU_ANSWER || "";
   }
 
+  function vdictUrl(phrase) {
+    const p = String(phrase || "").normalize("NFC").trim().toLowerCase();
+    if (!p || !window.DOANCHU_VDICT || !window.DOANCHU_VDICT[p]) return "";
+    return "https://vdict.com/" + encodeURIComponent(p) + ",3,0,0.html";
+  }
+
+  function answerHtml(sol) {
+    const up = sol.toUpperCase();
+    const url = vdictUrl(sol);
+    if (!url) return "<span>" + up + "</span>";
+    return (
+      '<span><a class="vdict-link" href="' +
+      url +
+      '" target="_blank" rel="noopener noreferrer">' +
+      up +
+      "</a></span>"
+    );
+  }
+
+  function syncVdictLink(sol, won) {
+    const msg = document.getElementById("endgame-message");
+    let a = document.getElementById("endgame-vdict");
+    const url = won ? vdictUrl(sol) : "";
+    if (!url) {
+      if (a) a.hidden = true;
+      return;
+    }
+    if (!a && msg) {
+      a = document.createElement("a");
+      a.id = "endgame-vdict";
+      a.className = "vdict-link";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      msg.insertAdjacentElement("afterend", a);
+    }
+    if (!a) return;
+    a.href = url;
+    a.textContent = "Xem trên VDict";
+    a.hidden = false;
+  }
+
   function endgameCopy(won, sol) {
     const ans = sol ? " Đáp án: " + sol.toUpperCase() + "." : "";
     if (!ROOM_MODE) {
@@ -374,10 +415,11 @@
     const up = sol.toUpperCase();
     const text = (el.textContent || "").toUpperCase();
     if (el.classList.contains("reveal")) {
-      if (text.includes("HẾT LƯỢT") && !text.includes(up)) {
-        el.innerHTML = "Hết lượt. Cụm từ là:<br><span>" + up + "</span>";
-      } else if (text.includes("CHÍNH XÁC") && !text.includes(up)) {
-        el.innerHTML = "🎉 Chính xác!<br><span>" + up + "</span>";
+      const hasLink = Boolean(el.querySelector("a.vdict-link"));
+      if (text.includes("HẾT LƯỢT") && (!text.includes(up) || !hasLink)) {
+        el.innerHTML = "Hết lượt. Cụm từ là:<br>" + answerHtml(sol);
+      } else if (text.includes("CHÍNH XÁC") && (!text.includes(up) || !hasLink)) {
+        el.innerHTML = "🎉 Chính xác!<br>" + answerHtml(sol);
       }
       return;
     }
@@ -394,8 +436,8 @@
     if (!(won || filled >= 6)) return;
     el.classList.add("reveal");
     el.innerHTML = won
-      ? "🎉 Chính xác!<br><span>" + up + "</span>"
-      : "Hết lượt. Cụm từ là:<br><span>" + up + "</span>";
+      ? "🎉 Chính xác!<br>" + answerHtml(sol)
+      : "Hết lượt. Cụm từ là:<br>" + answerHtml(sol);
   }
 
   function applyEndgame() {
@@ -407,6 +449,7 @@
     const won = Boolean(title && /chúc mừng/i.test(title.textContent || ""));
     const next = endgameCopy(won, sol);
     if (msg.textContent !== next) msg.textContent = next;
+    syncVdictLink(sol, won);
     const newBtn = document.getElementById("endgame-new");
     if (!newBtn) return;
     if (ROOM_MODE) {

@@ -385,6 +385,11 @@ def main() -> None:
         action="store_true",
         help="Rebuild Play from Viet11K 2-word compounds (2–5 letters each)",
     )
+    parser.add_argument(
+        "--import-vdict",
+        action="store_true",
+        help="Add VDict 2-word headwords to Raw and Play (run/vdict/words.txt)",
+    )
     args = parser.parse_args()
 
     if args.stop:
@@ -397,6 +402,10 @@ def main() -> None:
         return
     if args.curate_play:
         print(json.dumps(db.curate_play(), ensure_ascii=False, indent=2))
+        db.export_artifacts()
+        return
+    if args.import_vdict:
+        print(json.dumps(db.import_vdict(), ensure_ascii=False, indent=2))
         db.export_artifacts()
         return
     if args.add_phrase:

@@ -86,3 +86,18 @@ def test_api_import_export_bulk(tmp_path, monkeypatch) -> None:
         assert purged["soft"] is False
         assert purged["removed"] == ["học sinh"]
         assert "học sinh" not in client.get("/api/phrases/export", params={"pool": "rejected"}).text
+
+
+def test_import_vdict(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "words.sqlite")
+    words = tmp_path / "words.txt"
+    words.write_text("học sinh\ncà phê\nxyz\nmột hai ba\nA-đam\n", encoding="utf-8")
+    out = db.import_vdict(words)
+    assert out["two_word"] == 2
+    assert db.has_vdict("học sinh")
+    assert "học sinh" in db.all_phrases("raw")
+    assert "cà phê" in db.all_phrases("play")
+    assert "một hai ba" not in db.all_phrases("raw")
+    again = db.import_vdict(words)
+    assert again["raw"] == 2
+    assert again["play"] == 2
