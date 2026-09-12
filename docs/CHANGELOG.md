@@ -2,6 +2,19 @@
 
 Tất cả các thay đổi kỹ thuật đáng chú ý của dự án sẽ được ghi nhận tại đây theo định dạng Keep a Changelog.
 
+## 2026-09-13
+
+### Added
+- Chế độ thi đấu phòng nhiều người Nhiều vòng (Multi-round Match):
+  - Tùy chọn số câu (1, 3, 5, 10 câu - mặc định 5) và thời gian (Không giới hạn - mặc định, 120s, 180s, 300s) ngay khi tạo phòng.
+  - Thang điểm theo số lượt đoán: lần 1 được 100đ, lần 2: 50đ, lần 3: 40đ, lần 4: 30đ, lần 5: 20đ, lần 6: 10đ, hỏng: 0đ.
+  - Cơ chế tie-breaker khi bằng điểm: người có tổng thời gian giải ít hơn xếp trên.
+  - Trạng thái `round_summary` (nghỉ 5s giữa 2 câu) và đếm ngược tự chuyển câu tiếp theo.
+  - Màn hình vinh danh chung cuộc (Victory Podium Top 1 🥇, Top 2 🥈, Top 3 🥉).
+  - Lệnh WebSocket mới: `Client.NEXT_ROUND` và `Server.ROUND_FINISHED`.
+- Ghi nhận quyết định kiến trúc ADR-005 vào `docs/DECISIONS.md`.
+- Ghi nhận tài liệu thiết kế chi tiết tại `docs/changes/2026-09-13-multi-round-match-scoring.md`.
+
 ---
 
 ## 2026-09-12 (Tối)

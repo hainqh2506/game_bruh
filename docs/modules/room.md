@@ -19,9 +19,17 @@ Quản lý vòng đời của các phòng chơi nhiều người (Party Mode), t
 stateDiagram-v2
     [*] --> lobby: HUB.create() hoặc join()
     lobby --> playing: Host gọi start() (Tối thiểu 2 người)
-    playing --> playing: submit_guess() (chưa ai thắng hoặc chưa hết lượt)
-    playing --> finished: Mọi người đã giải xong HOẶC hết 6 lượt
-    finished --> playing: Host gọi rematch() (Bắt đầu ván mới)
+    
+    state playing {
+        [*] --> round_active: Bắt đầu câu X/N
+        round_active --> round_active: submit_guess()
+        round_active --> round_over: Mọi người đã giải xong HOẶC hết 6 lượt HOẶC hết giờ
+    }
+
+    round_over --> round_summary: current_round < total_rounds (Nghỉ 5s / Host bấm Next)
+    round_summary --> round_active: next_round()
+    round_over --> finished: current_round == total_rounds
+    finished --> playing: Host gọi rematch() (Bắt đầu trận mới)
     finished --> [*]: Hết hạn room_ttl (Bị dọn dẹp tự động)
     lobby --> [*]: Hết hạn room_ttl không ai vào
 ```
@@ -30,22 +38,19 @@ stateDiagram-v2
 
 ## 4. Giao diện công khai (Public Interfaces)
 - **`RoomHub`**:
-  - `create(name, settings) -> dict`: Tạo phòng mới, trả về token và mã phòng.
+  - `create(name, settings) -> dict`: Tạo phòng mới (nhận `rounds`, `time_limit`), trả về token và mã phòng.
   - `join(room_id, name, token) -> dict`: Tham gia phòng mới hoặc tái kết nối phòng cũ với token đã lưu.
   - `player_for(room_id, token) -> (RoomSession, Player)`: Lấy thông tin phiên phòng và người chơi an toàn theo token.
-  - `sweep_stale() -> list[(room_id, event)]`: Quét dọn các phòng và kết nối rác.
+  - `sweep_stale() -> list[(room_id, event)]`: Quét dọn phòng/kết nối rác và kiểm tra hết giờ `time_limit`.
 - **`RoomSession`**:
-  - `start(player) -> dict`: Bắt đầu ván chơi (chỉ host được gọi).
-  - `submit_guess(player, guess) -> dict`: Nộp từ đoán, trả về payload cho người đoán và payload broadcast cho bạn cùng phòng.
-  - `rematch(player) -> dict`: Chơi lại ván mới cùng nhóm người chơi.
+  - `start(player) -> dict`: Bắt đầu trận đấu, reset điểm và thời gian, chuyển round 1.
+  - `next_round(player) -> dict`: Chuyển sang câu tiếp theo, reset bảng chơi, giữ nguyên tổng điểm tích lũy.
+  - `submit_guess(player, guess) -> dict`: Nộp từ đoán, tính điểm (100đ, 50đ, 40đ, 30đ, 20đ, 10đ), thời gian giải, và kích hoạt `ROUND_FINISHED` hoặc `FINISHED`.
+  - `rematch(player) -> dict`: Bắt đầu trận đấu mới cùng nhóm người chơi.
 
 ---
 
 ## 5. Quản lý đồng thời & Bất biến (Invariants)
 - **Thread Safety:** Toàn bộ truy cập vào từ điển `_rooms` phải được bao bọc trong khối `with self._lock:` (sử dụng `threading.RLock()`).
-- **Ẩn đáp án:** Phương thức `room.public(player)` chỉ đính kèm trường `solution` khi người chơi đó đã giải đúng (`solved = True`), hoặc đã dùng hết `MAX_ATTEMPTS` (6 lượt), hoặc phòng đã ở trạng thái `finished`.
-
----
-
-## 6. Điểm mở rộng trong tương lai (Extension Points)
-- **Chế độ nhiều vòng (Multi-round Match):** Bổ sung thuộc tính `round_current`, `round_total`, `scores: dict[player_id, int]` vào `RoomSession` để duy trì tổng điểm qua nhiều câu đố liên tiếp.
+- **Ẩn đáp án:** Phương thức `room.public(player)` chỉ đính kèm trường `solution` khi người chơi đó đã giải đúng (`solved = True`), hoặc đã dùng hết `MAX_ATTEMPTS` (6 lượt), hoặc phòng đã ở trạng thái `round_summary` / `finished`.
+- **Tie-breaker:** Khi tính `ranking()`, người có `total_score` cao hơn xếp trên; nếu bằng điểm, người có `total_time` thấp hơn (giải nhanh hơn) sẽ xếp trên.

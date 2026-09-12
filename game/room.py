@@ -57,6 +57,16 @@ def _clean_token(token: str | None) -> str:
     return str(token or "").strip()
 
 
+SCORE_BY_ATTEMPT = {
+    1: 100,
+    2: 50,
+    3: 40,
+    4: 30,
+    5: 20,
+    6: 10,
+}
+
+
 @dataclass
 class Player:
     id: str
@@ -69,6 +79,10 @@ class Player:
     guesses: list[str] = field(default_factory=list)
     marks_list: list[list[str | None]] = field(default_factory=list)
     last_seen: float = field(default_factory=_now)
+    total_score: int = 0
+    round_score: int = 0
+    total_time: float = 0.0
+    round_time: float = 0.0
 
     def public(self) -> dict[str, Any]:
         return {
@@ -77,6 +91,10 @@ class Player:
             "attempts": self.attempts,
             "solved": self.solved,
             "disconnected": self.disconnected,
+            "total_score": self.total_score,
+            "round_score": self.round_score,
+            "total_time": round(self.total_time, 2),
+            "round_time": round(self.round_time, 2),
         }
 
     def own_board(self) -> dict[str, Any]:
@@ -95,6 +113,10 @@ class RoomSession:
     started_at: float | None = None
     finished_at: float | None = None
     updated_at: float = field(default_factory=_now)
+    total_rounds: int = 1
+    current_round: int = 1
+    time_limit: int = 0
+    round_started_at: float | None = None
 
     def touch(self) -> None:
         self.updated_at = _now()
@@ -112,10 +134,12 @@ class RoomSession:
         return [p.public() for p in self.players.values()]
 
     def ranking(self) -> list[dict[str, Any]]:
-        solved = [p for p in self.players.values() if p.solved and p.solved_at is not None]
-        solved.sort(key=lambda p: p.solved_at or 0)
+        def sort_key(p: Player):
+            return (-p.total_score, p.total_time if p.total_score > 0 else 999999.0, p.attempts)
+
+        ranked = sorted(self.players.values(), key=sort_key)
         out = []
-        for i, player in enumerate(solved, start=1):
+        for i, player in enumerate(ranked, start=1):
             row = player.public()
             row["rank"] = i
             out.append(row)
@@ -131,11 +155,14 @@ class RoomSession:
             "players": self.roster(),
             "max_guesses": MAX_ATTEMPTS,
             "max_players": self.max_players,
+            "round": self.current_round,
+            "total_rounds": self.total_rounds,
+            "time_limit": self.time_limit,
         }
-        if self.status in {"playing", "finished"} and self.answer:
+        if self.status in {"playing", "round_summary", "finished"} and self.answer:
             payload.update(puzzle_meta(self.answer))
-            payload["started_at"] = int(self.started_at or 0)
-        if self.status == "finished":
+            payload["started_at"] = int(self.round_started_at or self.started_at or 0)
+        if self.status in {"round_summary", "finished"}:
             payload["ranking"] = self.ranking()
         if player:
             payload["you"] = player.public()
@@ -143,7 +170,7 @@ class RoomSession:
             if self.answer and (
                 player.solved
                 or player.attempts >= MAX_ATTEMPTS
-                or self.status == "finished"
+                or self.status in {"round_summary", "finished"}
             ):
                 payload["solution"] = self.answer
         return payload
@@ -151,19 +178,13 @@ class RoomSession:
     def public_no_board(self) -> dict[str, Any]:
         return self.public(player=None)
 
-    def _maybe_finish(self) -> bool:
+    def _round_over(self) -> bool:
         if self.status != "playing":
             return False
-        if any(p.solved for p in self.players.values()):
-            if all(p.solved or p.attempts >= MAX_ATTEMPTS for p in self.players.values()):
-                self.status = "finished"
-                self.finished_at = _now()
-                return True
-        if all(p.attempts >= MAX_ATTEMPTS or p.solved for p in self.players.values()) and self.players:
-            self.status = "finished"
-            self.finished_at = _now()
-            return True
-        return False
+        active = [p for p in self.players.values() if not p.disconnected]
+        if not active:
+            return False
+        return all(p.solved or p.attempts >= MAX_ATTEMPTS for p in active)
 
     def start(self, player: Player) -> dict[str, Any]:
         if player.id != self.host_id:
@@ -173,9 +194,11 @@ class RoomSession:
         if len(self.players) < 2:
             raise ValueError("Cần ít nhất 2 người")
         self.touch()
+        self.current_round = 1
         self.answer = pick_answer(self.settings)
         self.status = "playing"
         self.started_at = _now()
+        self.round_started_at = self.started_at
         self.finished_at = None
         for p in self.players.values():
             p.attempts = 0
@@ -183,13 +206,54 @@ class RoomSession:
             p.solved_at = None
             p.guesses.clear()
             p.marks_list.clear()
+            p.total_score = 0
+            p.round_score = 0
+            p.total_time = 0.0
+            p.round_time = 0.0
         meta = puzzle_meta(self.answer)
         return {
             "type": Server.STARTED,
             "room_id": self.id,
+            "round": self.current_round,
+            "total_rounds": self.total_rounds,
+            "time_limit": self.time_limit,
             "length": meta["length"],
             "spaceIndex": meta["spaceIndex"],
-            "started_at": int(self.started_at or 0),
+            "started_at": int(self.round_started_at or 0),
+            "max_guesses": MAX_ATTEMPTS,
+            "players": self.roster(),
+        }
+
+    def next_round(self, player: Player | None = None) -> dict[str, Any]:
+        if player and player.id != self.host_id:
+            raise PermissionError("Chỉ chủ phòng được chuyển câu")
+        if self.status not in {"round_summary", "playing"}:
+            raise ValueError("Ván chưa thể qua câu tiếp theo")
+        if self.current_round >= self.total_rounds:
+            raise ValueError("Đã là câu cuối cùng")
+        self.touch()
+        self.current_round += 1
+        self.answer = pick_answer(self.settings)
+        self.status = "playing"
+        self.round_started_at = _now()
+        for p in self.players.values():
+            p.attempts = 0
+            p.solved = False
+            p.solved_at = None
+            p.guesses.clear()
+            p.marks_list.clear()
+            p.round_score = 0
+            p.round_time = 0.0
+        meta = puzzle_meta(self.answer)
+        return {
+            "type": Server.STARTED,
+            "room_id": self.id,
+            "round": self.current_round,
+            "total_rounds": self.total_rounds,
+            "time_limit": self.time_limit,
+            "length": meta["length"],
+            "spaceIndex": meta["spaceIndex"],
+            "started_at": int(self.round_started_at or 0),
             "max_guesses": MAX_ATTEMPTS,
             "players": self.roster(),
         }
@@ -220,10 +284,39 @@ class RoomSession:
         if won:
             player.solved = True
             player.solved_at = _now()
-        finished = self._maybe_finish()
-        # First solver also finishes the race for ranking display; others may continue
-        # until they solve or exhaust. If someone solved, we still wait for others
-        # unless we want instant finish — plan: first correct wins, others can continue.
+            start_ref = self.round_started_at or self.started_at or player.solved_at
+            player.round_time = max(0.1, round(player.solved_at - start_ref, 2))
+            player.total_time = round(player.total_time + player.round_time, 2)
+            player.round_score = SCORE_BY_ATTEMPT.get(player.attempts, 10)
+            player.total_score += player.round_score
+
+        round_done = self._round_over()
+        round_event = None
+        finished_event = None
+        if round_done:
+            if self.current_round < self.total_rounds:
+                self.status = "round_summary"
+                self.finished_at = _now()
+                round_event = {
+                    "type": Server.ROUND_FINISHED,
+                    "round": self.current_round,
+                    "total_rounds": self.total_rounds,
+                    "ranking": self.ranking(),
+                    "players": self.roster(),
+                    "solution": self.answer,
+                }
+            else:
+                self.status = "finished"
+                self.finished_at = _now()
+                finished_event = {
+                    "type": Server.FINISHED,
+                    "round": self.current_round,
+                    "total_rounds": self.total_rounds,
+                    "ranking": self.ranking(),
+                    "players": self.roster(),
+                    "solution": self.answer,
+                }
+
         result: dict[str, Any] = {
             "type": Server.GUESS_RESULT,
             "status": "success",
@@ -231,6 +324,8 @@ class RoomSession:
             "won": won,
             "attempt": player.attempts,
             "max_guesses": MAX_ATTEMPTS,
+            "round_score": player.round_score,
+            "total_score": player.total_score,
         }
         if won or player.attempts >= MAX_ATTEMPTS:
             result["solution"] = self.answer
@@ -245,15 +340,12 @@ class RoomSession:
                 (i for i, row in enumerate(self.ranking(), start=1) if row["id"] == player.id),
                 None,
             )
-        finished_event = None
-        if finished:
-            finished_event = {
-                "type": Server.FINISHED,
-                "ranking": self.ranking(),
-                "players": self.roster(),
-                "solution": self.answer,
-            }
-        return {"to_player": result, "broadcast": peer, "finished": finished_event}
+        return {
+            "to_player": result,
+            "broadcast": peer,
+            "round_finished": round_event,
+            "finished": finished_event,
+        }
 
 
 class RoomHub:
@@ -297,11 +389,14 @@ class RoomHub:
             while room_id in self._rooms:
                 room_id = _new_code()
             host = Player(id=_new_id(), name=_clean_name(name), token=secrets.token_urlsafe(16))
+            cfg = normalize_settings(settings)
             room = RoomSession(
                 id=room_id,
                 host_id=host.id,
-                settings=normalize_settings(settings),
+                settings=cfg,
                 max_players=self.limits.max_players,
+                total_rounds=cfg.get("rounds", 1),
+                time_limit=cfg.get("time_limit", 0),
             )
             room.players[host.id] = host
             self._rooms[room_id] = room
@@ -369,7 +464,8 @@ class RoomHub:
 
     def sweep_stale(self) -> list[tuple[str, dict[str, Any]]]:
         events: list[tuple[str, dict[str, Any]]] = []
-        cutoff = _now() - HEARTBEAT_TIMEOUT
+        now = _now()
+        cutoff = now - HEARTBEAT_TIMEOUT
         with self._lock:
             for room in self._rooms.values():
                 for player in room.players.values():
@@ -381,6 +477,46 @@ class RoomHub:
                                 {"type": Server.PEER_UPDATE, "player": player.public(), "players": room.roster()},
                             )
                         )
+                # Check round time limit expiry
+                if room.status == "playing" and room.time_limit > 0 and room.round_started_at:
+                    if now - room.round_started_at >= room.time_limit:
+                        for p in room.players.values():
+                            if not p.solved and p.attempts < MAX_ATTEMPTS:
+                                p.attempts = MAX_ATTEMPTS
+                                p.round_score = 0
+                                p.round_time = float(room.time_limit)
+                        if room.current_round < room.total_rounds:
+                            room.status = "round_summary"
+                            room.finished_at = now
+                            events.append(
+                                (
+                                    room.id,
+                                    {
+                                        "type": Server.ROUND_FINISHED,
+                                        "round": room.current_round,
+                                        "total_rounds": room.total_rounds,
+                                        "ranking": room.ranking(),
+                                        "players": room.roster(),
+                                        "solution": room.answer,
+                                    },
+                                )
+                            )
+                        else:
+                            room.status = "finished"
+                            room.finished_at = now
+                            events.append(
+                                (
+                                    room.id,
+                                    {
+                                        "type": Server.FINISHED,
+                                        "round": room.current_round,
+                                        "total_rounds": room.total_rounds,
+                                        "ranking": room.ranking(),
+                                        "players": room.roster(),
+                                        "solution": room.answer,
+                                    },
+                                )
+                            )
             self._drop_idle_rooms()
         return events
 

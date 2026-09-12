@@ -114,7 +114,10 @@ def normalize_settings(raw: dict[str, Any] | None) -> dict[str, Any]:
         except (TypeError, ValueError):
             n = None
         out.append(n if n and n > 0 else None)
-    return {"words": words, "lengths": out}
+    rounds = int(raw.get("rounds") or 1)
+    rounds = max(1, min(20, rounds))
+    time_limit = max(0, int(raw.get("time_limit") or 0))
+    return {"words": words, "lengths": out, "rounds": rounds, "time_limit": time_limit}
 
 
 def matches_settings(phrase: str, settings: dict[str, Any]) -> bool:

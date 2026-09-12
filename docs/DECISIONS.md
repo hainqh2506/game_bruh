@@ -87,3 +87,24 @@ Khi triển khai lên Render Web Service, container Linux tối giản không c�
 
 ### Hệ quả (Consequences)
 - **Ưu điểm:** Một mã nguồn duy nhất chạy mượt mà ở cả 2 môi trường: Local máy cá nhân (Windows/macOS) và Render Production (Linux container), không cần tạo nhánh git riêng biệt.
+
+---
+
+## ADR-005: Chế độ Thi đấu Nhiều vòng (Multi-Round Match) và Hệ thống Tính điểm Xếp hạng
+
+- **Ngày:** 2026-09-13
+- **Trạng thái:** Accepted
+
+### Bối cảnh (Context)
+Cơ chế phòng nhóm ban đầu chỉ chạy 1 câu duy nhất: người giải xong sớm hoặc đoán sai cả 6 lần phải ngồi chờ thụ động rất lâu, tạo trải nghiệm cụt hứng. Người dùng đề xuất mô hình trận đấu gồm 5–10 câu chung, tính điểm theo số lượt đoán và có đồng hồ thời gian.
+
+### Quyết định (Decision)
+1. Tích hợp trực tiếp tùy chọn Số câu (`rounds`: 1, 3, 5, 10) và Thời gian (`time_limit`: 0, 120s, 180s, 300s) vào lúc tạo phòng Party. Mặc định là 5 câu và không giới hạn thời gian.
+2. Thang điểm theo lượt đoán: Lần 1: 100đ, Lần 2: 50đ, Lần 3: 40đ, Lần 4: 30đ, Lần 5: 20đ, Lần 6: 10đ, hỏng: 0đ.
+3. Tiêu chí phụ (Tie-breaker): Khi bằng điểm, người có tổng thời gian giải ít hơn (`total_time ASC`) sẽ xếp trên.
+4. Mở rộng State Machine của `RoomSession` thêm trạng thái `round_summary` (nghỉ 5s giữa 2 câu) và sự kiện `ROUND_FINISHED` / `NEXT_ROUND`.
+
+### Hệ quả (Consequences)
+- **Ưu điểm:** Tăng tính cạnh tranh, ai cũng được chơi liên tục qua nhiều câu, có cơ hội lật kèo. Tương thích ngược 100% với các test cũ (`rounds=1`).
+- **Nhược điểm:** Phức tạp hóa nhẹ luồng state machine trong `RoomSession`.
+

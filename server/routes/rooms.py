@@ -14,7 +14,12 @@ router = APIRouter()
 async def api_rooms_create(request: Request) -> Any:
     body = await read_json(request)
     try:
-        return HUB.create(str(body.get("name") or ""), body.get("settings"))
+        settings = dict(body.get("settings") or {})
+        if "rounds" in body and "rounds" not in settings:
+            settings["rounds"] = body["rounds"]
+        if "time_limit" in body and "time_limit" not in settings:
+            settings["time_limit"] = body["time_limit"]
+        return HUB.create(str(body.get("name") or ""), settings)
     except Exception as exc:
         return json_error(str(exc))
 
