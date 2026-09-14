@@ -234,7 +234,11 @@
       .map((n) => optionHtml(String(n), n + " từ", settings.words === n))
       .join("");
     box.innerHTML = `
-      <summary>Cài đặt <span id="settings-summary">${labelSettings(settings)}</span></summary>
+      <summary>Cài đặt <select id="theme-select" aria-label="Giao diện">
+          <option value="classic">Cổ điển</option>
+          <option value="office">Sáng</option>
+          <option value="slate">Tối</option>
+        </select> <span id="settings-summary">${labelSettings(settings)}</span></summary>
       <div class="settings-body">
         <div class="settings-row">
           <label class="settings-field">Số từ
@@ -247,6 +251,9 @@
       </div>
     `;
     bar.parentElement.insertBefore(box, bar);
+    if (window.DOANCHU_THEME && window.DOANCHU_THEME.bind) {
+      window.DOANCHU_THEME.bind();
+    }
     renderLengthSelects(settings);
     updateMatchHint();
     if (!matched.length && PHRASES.length) {
@@ -327,9 +334,10 @@
     if (row && !document.getElementById("endgame-new")) {
       const b = document.createElement("button");
       b.id = "endgame-new";
+      b.className = "endgame-primary";
       b.textContent = ROOM_MODE ? "" : "Ván mới";
       b.style.cssText =
-        "padding:12px 24px;background:#fc0;color:#831810;border:none;border-radius:10px;font-weight:800;font-size:18px;cursor:pointer;";
+        "padding:12px 24px;border:none;border-radius:10px;font-weight:800;font-size:18px;cursor:pointer;";
       if (ROOM_MODE) {
         b.style.display = "none";
       }

@@ -1,0 +1,360 @@
+:root,
+html[data-theme="classic"] {
+  --bg-deep-red: #a12629;
+  --text: #eee;
+  --muted: #bbb;
+  --key: #262626;
+  --key-border: #404040;
+  --gold: #d4af37;
+  --accent: #fc0;
+  --accent-text: #831810;
+  --gold-text: #ffeb7a;
+  --panel: rgba(0, 0, 0, .18);
+  --input-bg: #2a1515;
+  --danger-bg: #7f1d1d;
+  --danger-text: #fecaca;
+  --modal-bg: #831810;
+  --modal-border: #fc0;
+  --table-cell: #8a1f24;
+  --table-head: #6e181c;
+  --table-alt: #7c1c21;
+  --debug-panel: #8a1f24;
+  --chrome: #a12629;
+  --chrome-border: #d4af37;
+}
+
+/* Light / office — high-contrast white, not washed Fluent gray. */
+html[data-theme="office"] {
+  --bg-deep-red: #ffffff;
+  --text: #111111;
+  --muted: #444444;
+  --key: #262626;
+  --key-border: #404040;
+  --gold: #d4af37;
+  --accent: #0b5cad;
+  --accent-text: #ffffff;
+  --gold-text: #0b5cad;
+  --panel: #ffffff;
+  --input-bg: #ffffff;
+  --danger-bg: #fde7e9;
+  --danger-text: #a4262c;
+  --modal-bg: #ffffff;
+  --modal-border: #c4c4c4;
+  --table-cell: #ffffff;
+  --table-head: #f0f0f0;
+  --table-alt: #f7f7f7;
+  --debug-panel: #ffffff;
+  --chrome: #ffffff;
+  --chrome-border: #c4c4c4;
+  color-scheme: light;
+}
+
+/* Teams / Excel dark gray — still work-like, not the red game. */
+html[data-theme="slate"] {
+  --bg-deep-red: #1b1a19;
+  --text: #f3f2f1;
+  --muted: #c8c6c4;
+  --key: #292827;
+  --key-border: #484644;
+  --gold: #d4af37;
+  --accent: #479ef5;
+  --accent-text: #0b0b0b;
+  --gold-text: #479ef5;
+  --panel: #252423;
+  --input-bg: #292827;
+  --danger-bg: #3b1419;
+  --danger-text: #f1bbbc;
+  --modal-bg: #252423;
+  --modal-border: #484644;
+  --table-cell: #252423;
+  --table-head: #201f1e;
+  --table-alt: #2d2c2b;
+  --debug-panel: #252423;
+  --chrome: #1b1a19;
+  --chrome-border: #484644;
+  color-scheme: dark;
+}
+
+html[data-theme="office"] body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+#theme-select {
+  flex: 0 0 auto;
+  min-width: 6.8rem;
+  max-width: 8rem;
+  margin: 0 6px 0 4px;
+  padding: 0 4px;
+  height: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: 6px;
+  border: 1px solid var(--chrome-border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+@media (max-width: 767px) {
+  #theme-select {
+    max-width: 6.6rem;
+    height: 26px;
+    margin: 0 4px 0 2px;
+    padding: 0 2px;
+  }
+}
+
+.sticky-share,
+#settings-go,
+#mode-bar button.on,
+.tab.on,
+.pool-tab.on,
+#debug-pager button,
+#debug-add-btn,
+#debug-import-btn,
+.endgame-primary,
+#endgame-share {
+  background: var(--accent) !important;
+  color: var(--accent-text) !important;
+  border-color: var(--accent) !important;
+}
+
+#game-settings,
+#room-panel,
+details,
+.tab,
+#mode-bar button,
+.pool-tab,
+#debug-root,
+#debug-bulk,
+#debug-import {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--chrome-border);
+}
+
+#game-settings summary::after,
+#settings-summary,
+.vdict-link,
+#endgame-vdict,
+#mode-bar button,
+.tab,
+.pool-tab,
+#debug-export,
+#debug-bulk button.ghost,
+#debug-table .acts button {
+  color: var(--gold-text);
+}
+
+.settings-field,
+#settings-count,
+.hint,
+.msg,
+#debug-meta,
+#debug-answer {
+  color: var(--muted);
+}
+
+.settings-field select,
+#debug-search,
+#debug-new,
+#debug-import-text,
+#room-panel input,
+#room-panel select {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--chrome-border);
+}
+
+#solo-full {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+#debug-table th,
+#debug-table td {
+  background: var(--table-cell);
+  color: var(--text);
+}
+#debug-table thead th {
+  background: var(--table-head);
+}
+#debug-table tbody tr:nth-child(even) td {
+  background: var(--table-alt);
+}
+
+body.tab-debug .header,
+body.tab-debug #app-tabs {
+  background: var(--chrome);
+}
+body.tab-debug #debug-root {
+  background: var(--debug-panel);
+}
+
+#endgame-modal {
+  background: var(--modal-bg) !important;
+  border-color: var(--modal-border) !important;
+  color: var(--text) !important;
+}
+#endgame-title-wrap {
+  color: var(--gold-text) !important;
+}
+#endgame-message,
+#endgame-modal {
+  color: var(--text) !important;
+}
+#endgame-close,
+#endgame-download {
+  color: var(--gold-text) !important;
+  border-color: var(--chrome-border) !important;
+}
+#endgame-preview {
+  border-color: var(--modal-border) !important;
+}
+
+html[data-theme="office"] h1.logo,
+html[data-theme="slate"] h1.logo {
+  color: var(--text);
+}
+
+html[data-theme="office"] .lenhint,
+html[data-theme="office"] .msg,
+html[data-theme="office"] #contact-info,
+html[data-theme="office"] .desktop-rules,
+html[data-theme="office"] .desktop-rules h2 {
+  color: var(--text);
+}
+html[data-theme="office"] .desktop-rules {
+  background: #fff;
+  border: 1px solid var(--chrome-border);
+}
+html[data-theme="office"] .howto-bar details > div,
+html[data-theme="office"] details > div {
+  color: var(--text) !important;
+}
+html[data-theme="office"] #mode-bar button:not(.on) {
+  background: #fff;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Board / keyboard stay on the original game palette. */
+html[data-theme="office"] .key,
+html[data-theme="slate"] .key {
+  background: #262626;
+  color: #eee;
+  border-color: #404040;
+}
+html[data-theme="office"] .key.enter,
+html[data-theme="slate"] .key.enter {
+  border-color: #fff;
+}
+
+/* Party lobby chrome — same contrast as solo settings, not pale gold-on-white. */
+html[data-theme="office"] #room-panel h2,
+html[data-theme="office"] .room-setup-row,
+html[data-theme="office"] #room-roster .you,
+html[data-theme="office"] #room-code-out,
+html[data-theme="office"] .score-badge,
+html[data-theme="office"] .summary-title,
+html[data-theme="office"] .mini-board-title {
+  color: var(--gold-text);
+}
+html[data-theme="office"] #room-status,
+html[data-theme="office"] .room-caps,
+html[data-theme="office"] #room-roster .badge,
+html[data-theme="office"] .summary-answer,
+html[data-theme="office"] .mini-board-close {
+  color: var(--muted);
+}
+html[data-theme="office"] #room-status.error {
+  color: var(--danger-text);
+}
+html[data-theme="office"] #room-roster .badge.done,
+html[data-theme="office"] .room-timer,
+html[data-theme="office"] .summary-answer strong {
+  color: #15803d;
+}
+html[data-theme="office"] #room-roster .badge.off,
+html[data-theme="office"] .room-timer.danger {
+  color: #b91c1c;
+}
+html[data-theme="office"] .room-row input,
+html[data-theme="office"] .room-select {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--chrome-border);
+}
+html[data-theme="office"] .room-row button,
+html[data-theme="office"] #room-actions button {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+html[data-theme="office"] .room-row button.ghost,
+html[data-theme="office"] #room-actions button.ghost {
+  background: #fff;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+html[data-theme="office"] #room-roster li {
+  background: #f3f4f6;
+  color: var(--text);
+}
+html[data-theme="office"] .round-badge {
+  background: #e8f1fa;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+html[data-theme="office"] .summary-card {
+  background: #fff;
+  border-color: var(--chrome-border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+html[data-theme="office"] .victory-card {
+  background: #f8fafc;
+  border-color: var(--accent);
+}
+html[data-theme="office"] .podium-item {
+  background: #f3f4f6;
+  color: var(--text);
+}
+html[data-theme="office"] .podium-item.gold {
+  color: #854d0e;
+}
+html[data-theme="office"] .podium-item.silver {
+  color: #334155;
+}
+html[data-theme="office"] .podium-item.bronze {
+  color: #9a3412;
+}
+html[data-theme="office"] .reaction-bar {
+  background: #f3f4f6;
+  border-color: var(--chrome-border);
+}
+html[data-theme="office"] .reaction-btn {
+  background: #fff !important;
+  border-color: var(--chrome-border) !important;
+}
+html[data-theme="office"] .spectate-toggle-btn {
+  background: #fff !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+html[data-theme="office"] .spectate-toggle-btn:hover,
+html[data-theme="office"] .spectate-toggle-btn.active {
+  background: var(--accent) !important;
+  color: var(--accent-text) !important;
+}
+html[data-theme="office"] .mini-board-wrap {
+  background: #f8fafc;
+  border-color: var(--chrome-border);
+}
+html[data-theme="office"] .mini-board-close:hover {
+  color: var(--text);
+}
+html[data-theme="office"] .mini-tile.tile-empty {
+  background: #fff;
+  border: 1px dashed #9ca3af;
+}
+html[data-theme="office"] .floating-name {
+  color: #fff;
+}

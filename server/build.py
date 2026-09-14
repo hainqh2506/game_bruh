@@ -11,8 +11,8 @@ import db
 from paths import DATA_DIR, PLAY_DIR, PUBLIC_DIR, SOURCE_DIR, VENDOR_DIR, write
 
 # Append here when adding a play/*.js or *.css — build + reload pick them up.
-PLAY_STYLES = ("debug.css", "settings.css", "room.css")
-PLAY_SCRIPTS = ("phrases.js", "marks.js", "room.js", "mock.js", "debug.js")
+PLAY_STYLES = ("debug.css", "settings.css", "room.css", "theme.css")
+PLAY_SCRIPTS = ("phrases.js", "marks.js", "room.js", "mock.js", "theme.js", "debug.js")
 PLAY_OPTIONAL = ("reload.js",)
 
 
@@ -76,7 +76,12 @@ def build_play(
     out = re.sub(r'<link rel="apple-touch-icon"[^>]*>', "", out)
     out = out.replace("<title>Đoán Chữ V3</title>", "<title>Đoán Chữ Unlimited</title>")
     style_tags = "".join(f'<link rel="stylesheet" href="{name}"/>' for name in PLAY_STYLES)
-    out = out.replace("</title>", f"</title>{style_tags}", 1)
+    boot_theme = (
+        "<script>try{var t=localStorage.getItem('doanchu:theme')||'classic';"
+        "if(t!=='office'&&t!=='slate'&&t!=='classic')t='classic';"
+        "document.documentElement.dataset.theme=t}catch(e){}</script>"
+    )
+    out = out.replace("</title>", f"</title>{style_tags}{boot_theme}", 1)
     out = re.sub(
         r'<h1 class="logo"><img src="/images/doanchu-logo.png"[^>]*/></h1>',
         '<h1 class="logo" style="font-size:clamp(22px,5vw,34px);font-weight:800;">Đoán Chữ Unlimited</h1>',

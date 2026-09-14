@@ -226,7 +226,7 @@
 
 /* Restore original 100dvh stack after #play-root wraps the board. */
 @media (max-width: 767px) and (min-height: 750px) {
-  html body .container > #play-root {
+  html body .container > #play-root:not([hidden]) {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
