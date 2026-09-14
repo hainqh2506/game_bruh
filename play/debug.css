@@ -6,7 +6,8 @@
   flex-shrink: 0;
 }
 #app-tabs[hidden],
-#debug-root[hidden] {
+#debug-root[hidden],
+#play-root[hidden] {
   display: none !important;
 }
 .tab {
@@ -74,13 +75,13 @@
   text-align: left;
   padding: 6px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
-  background: #8a1f24;
+  background: var(--table-cell, #8a1f24);
 }
 #debug-table thead th {
-  background: #6e181c;
+  background: var(--table-head, #6e181c);
 }
 #debug-table tbody tr:nth-child(even) td {
-  background: #7c1c21;
+  background: var(--table-alt, #7c1c21);
 }
 #debug-pager {
   display: flex;
@@ -259,8 +260,11 @@
   body.tab-debug .header,
   body.tab-debug #app-tabs {
     flex-shrink: 0;
-    background: var(--bg-deep-red, #a12629);
+    background: var(--chrome, var(--bg-deep-red, #a12629));
     z-index: 2;
+  }
+  body.tab-debug #play-root {
+    display: none !important;
   }
   body.tab-debug #debug-root {
     flex: 1 1 auto;
@@ -268,9 +272,8 @@
     margin: 4px 0 0;
     overflow-x: hidden;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    background: #8a1f24;
+    background: var(--debug-panel, #8a1f24);
     isolation: isolate;
   }
 }

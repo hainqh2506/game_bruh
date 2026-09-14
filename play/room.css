@@ -62,7 +62,6 @@ body.party-play #game-settings {
   body.party-play #room-roster {
     max-height: 190px;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
   }
   body.party-play #room-roster li {
     padding: 4px 8px;
@@ -461,6 +460,7 @@ body.party-play #game-settings {
   transition: transform 0.12s ease, background 0.12s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
   user-select: none;
 }
 .reaction-btn:hover {

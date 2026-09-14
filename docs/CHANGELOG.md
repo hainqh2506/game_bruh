@@ -2,6 +2,20 @@
 
 Tất cả các thay đổi kỹ thuật đáng chú ý của dự án sẽ được ghi nhận tại đây theo định dạng Keep a Changelog.
 
+## 2026-09-14
+
+### Added
+- Bộ giao diện (theme) phía client, chọn trong **Cài đặt → Giao diện**, lưu `localStorage` (`doanchu:theme`):
+  - **Cổ điển** — nền đỏ/vàng hiện tại (mặc định).
+  - **Sáng** — nền trắng/chrome xanh, **giữ nguyên màu ô game** (xanh lá / vàng / xanh dương / xám); id `office` giữ tương thích `localStorage`.
+  - **Tối** — xám đậm kiểu Teams/Excel dark, không dùng đỏ game.
+  - Ô chọn nằm gọn trên cùng dòng **Cài đặt**, không chiếm hàng riêng.
+
+### Changed
+- Màu chrome (nút, panel, popup kết thúc, kho từ) đi theo biến CSS `--accent` / `--panel` / `--modal-bg` thay vì hard-code vàng-đỏ.
+- Theme **Sáng**: panel **Cùng bạn** dùng cùng `--text` / `--accent` như **Chơi đơn** (không còn chữ vàng/`#ddd` mờ trên nền trắng).
+- Mobile: tab **Kho từ** ẩn hẳn `#play-root` (`display: none !important`) để bảng chữ không đè lên kho từ trên màn hình cao.
+
 ## 2026-09-13
 
 ### Added
